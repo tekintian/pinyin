@@ -10,4 +10,5 @@ namespace tekintian\pinyin;
 require 'PinyinConverter.php';
 $converter = new PinyinConverter();
 $result = $converter->executeMerge();
+// 打印合并结果（可选）
 echo "合并结果：" . json_encode($result, JSON_UNESCAPED_UNICODE) . "\n";
