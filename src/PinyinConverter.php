@@ -531,6 +531,56 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
     }
 
     /**
+     * 迁移常用字典中调用频率低的字符到生僻字字典
+     * @param string $toneType 声调类型
+     */
+    private function migrateLowFrequencyChars($toneType) {
+        $commonPath = $this->config['dict']['common'][$toneType];
+        $commonData = FileUtil::requireFile($commonPath);
+        $commonData = $this->formatPinyinArray($commonData);
+        
+        $rarePath = $this->config['dict']['rare'][$toneType];
+        $rareData = FileUtil::fileExists($rarePath) ? FileUtil::requireFile($rarePath) : [];
+        $rareData = $this->formatPinyinArray($rareData);
+        
+        // 计算常用字典中每个字符的平均频率
+        $totalFrequency = 0;
+        $charCount = count($commonData);
+        
+        foreach ($commonData as $char => $pinyin) {
+            $freq = $this->charFrequency[$toneType][$char] ?? 0;
+            $totalFrequency += $freq;
+        }
+        
+        $averageFrequency = $charCount > 0 ? $totalFrequency / $charCount : 0;
+        
+        // 迁移频率低于平均值的字符到生僻字字典
+        $migratedChars = [];
+        foreach ($commonData as $char => $pinyin) {
+            $freq = $this->charFrequency[$toneType][$char] ?? 0;
+            if ($freq < $averageFrequency * 0.5) { // 低于平均值50%的字符
+                $rareData[$char] = $pinyin;
+                $migratedChars[] = $char;
+            }
+        }
+        
+        // 从常用字典中删除迁移的字符
+        foreach ($migratedChars as $char) {
+            unset($commonData[$char]);
+        }
+        
+        // 保存更新后的字典
+        if (!empty($migratedChars)) {
+            FileUtil::writeFile($commonPath, "<?php\nreturn " . $this->shortArrayExport($commonData) . ";\n");
+            FileUtil::writeFile($rarePath, "<?php\nreturn " . $this->shortArrayExport($rareData) . ";\n");
+            
+            // 更新内存中的字典数据
+            $this->dicts['common'][$toneType] = $commonData;
+            $this->dicts['rare'][$toneType] = $rareData;
+        }
+    }
+
+    /**
      * 加载多音字规则字典
      */
     private function loadPolyphoneRules() {
@@ -649,17 +699,7 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
             return $this->cleanPinyin($tempMap[$char], true);
         }
 
-        // 自定义字典（区分单字/多字）
-        if ($this->dicts['custom'][$type] === null) {
-            $this->loadCustomDict($withTone);
-        }
-        
-        if (isset($this->dicts['custom'][$type][$char])) {
-            $pinyin = $this->getFirstPinyin($this->dicts['custom'][$type][$char]);
-            return $this->cleanPinyin($pinyin, mb_strlen($char, 'UTF-8') === 1);
-        }
-        
-        // 多音字规则检查
+        // 多音字规则检查 - 第二优先级
         $this->loadPolyphoneRules();
         
         if (isset($this->dicts['polyphone_rules'][$char])) {
@@ -675,6 +715,16 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
                 
                 return $this->cleanPinyin($matchedPinyin, true);
             }
+        }
+
+        // 自定义字典（区分单字/多字）- 第三优先级
+        if ($this->dicts['custom'][$type] === null) {
+            $this->loadCustomDict($withTone);
+        }
+        
+        if (isset($this->dicts['custom'][$type][$char])) {
+            $pinyin = $this->getFirstPinyin($this->dicts['custom'][$type][$char]);
+            return $this->cleanPinyin($pinyin, mb_strlen($char, 'UTF-8') === 1);
         }
         
         // 其他字典（按照self_xxx, common_xxx, rare_xxx的顺序）
