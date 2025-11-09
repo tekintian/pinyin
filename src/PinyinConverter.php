@@ -1022,14 +1022,27 @@ $data = file_exists($path) ? require $path : [];
         if (!empty($customPinyinMatches)) {
             $parts = preg_split('/(\[\[CUSTOM_PINYIN:[^\]]+\]\])/', $textAfterMultiWords, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
             
+            $previousWasCustomPinyin = false;
+            
             foreach ($parts as $part) {
                 if (isset($customPinyinMatches[$part])) {
                     // 这是自定义多字词语的拼音，直接添加到结果中
+                    // 如果前一个部分是自定义拼音，需要在它们之间添加分隔符占位符
+                    if ($previousWasCustomPinyin) {
+                        $result[] = '';
+                    }
                     $result[] = $customPinyinMatches[$part];
+                    $previousWasCustomPinyin = true;
                 } else {
                     // 这是普通文本，需要进一步处理
                     $len = mb_strlen($part, 'UTF-8');
                     $currentWord = ''; // 用于累积连续的字母和数字
+                    
+                    // 如果前一个部分是自定义拼音，需要在自定义拼音和普通文本之间添加分隔符占位符
+                    if ($previousWasCustomPinyin && $len > 0) {
+                        $result[] = '';
+                    }
+                    $previousWasCustomPinyin = false;
                     
                     for ($i = 0; $i < $len; $i++) {
                         $char = mb_substr($part, $i, 1, 'UTF-8');
@@ -1105,11 +1118,9 @@ $data = file_exists($path) ? require $path : [];
                     $pinyin = $this->getCharPinyin($char, $withTone, $context, $polyphoneTempMap);
                     $result[] = $pinyin;
                 } else {
-                    $handled = $this->handleSpecialChar($char, $charConfig);
-                    
-                    // 如果是字母、数字或版本号中的点号，累积到当前单词中
-                    if ($handled !== '' && (ctype_alnum($handled) || $handled === '-' || $handled === '.')) {
-                        $currentWord .= $handled;
+                    // 直接处理非汉字字符，不通过 handleSpecialChar 拆分英文单词
+                    if (ctype_alnum($char) || $char === '-' || $char === '.') {
+                        $currentWord .= $char;
                     } else {
                         // 处理累积的英文单词或数字
                         if ($currentWord !== '') {
@@ -1118,17 +1129,17 @@ $data = file_exists($path) ? require $path : [];
                         }
                         
                         // 处理特殊字符
+                        $handled = $this->handleSpecialChar($char, $charConfig);
                         if ($handled !== '') {
                             $result[] = $handled;
                         }
                     }
                 }
-            
+            }
             // 处理末尾的累积单词
             if ($currentWord !== '') {
-               
-                        $result[] = $handled;
-                    }
+                $result[] = $currentWord;
+                $currentWord = '';
             }
         }
         
