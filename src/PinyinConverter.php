@@ -169,7 +169,9 @@ class PinyinConverter implements ConverterInterface {
      */
     private function initDirectories() {
         $backupDir = $this->config['dict']['backup'];
-        FileUtil::createDir($backupDir);
+        if (!FileUtil::fileExists($backupDir)) {
+            FileUtil::createDir($backupDir);
+        }
 
         foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
             foreach (['with_tone', 'no_tone'] as $toneType) {
@@ -239,7 +241,7 @@ class PinyinConverter implements ConverterInterface {
             return;
         }
         $path = $this->config['dict']['custom'][$type];
-        $data = FileUtil::fileExists($path) ? require $path : [];
+        $data = FileUtil::fileExists($path) ? FileUtil::requireFile($path) : [];
         $this->dicts['custom'][$type] = is_array($data) ? $this->formatPinyinArray($data) : [];
     }
 
@@ -302,7 +304,7 @@ class PinyinConverter implements ConverterInterface {
             return;
         }
         $path = $this->config['dict']['self_learn']['frequency'];
-        $data = FileUtil::fileExists($path) ? require $path : [];
+        $data = FileUtil::fileExists($path) ? FileUtil::requireFile($path) : [];
         $this->dicts['self_learn_frequency'] = is_array($data) ? $data : [];
         $this->charFrequency = $this->dicts['self_learn_frequency'];
     }
@@ -333,7 +335,7 @@ class PinyinConverter implements ConverterInterface {
      */
     private function getLastMergeTimeFile($toneType) {
         $path = $this->config['dict']['backup'] . "/last_merge_{$toneType}.txt";
-        return FileUtil::fileExists($path) ? (int)FileUtil::readFile($path) : 0;
+        return FileUtil::fileExists($path) ? (int)FileUtil::getFileContent($path) : 0;
     }
 
     /**
@@ -373,7 +375,7 @@ class PinyinConverter implements ConverterInterface {
         }
         $backupDir = $this->config['dict']['backup'];
         $filename = basename($sourcePath, '.php') . '_' . date('YmdHis') . '.php';
-        FileUtil::copy($sourcePath, $backupDir . '/' . $filename);
+        FileUtil::copyFile($sourcePath, $backupDir . '/' . $filename);
     }
 
     /**
@@ -413,7 +415,7 @@ class PinyinConverter implements ConverterInterface {
                 $this->cleanupAfterMerge($toneType, $mergeCount);
                 $this->updateLastMergeTime($toneType);
                 $result['success'][] = $toneType;
-            } catch (\Exception $e) {
+            } catch (PinyinException $e) {
                 $result['fail'][] = [
                     'toneType' => $toneType,
                     'error' => $e->getMessage()
@@ -433,7 +435,7 @@ class PinyinConverter implements ConverterInterface {
         $this->backupDict('self_learn', $toneType);
 
         $commonPath = $this->config['dict']['common'][$toneType];
-        $commonData = FileUtil::fileExists($commonPath) ? require $commonPath : [];
+        $commonData = FileUtil::requireFile($commonPath);
         $commonData = $this->formatPinyinArray($commonData);
 
         $selfLearnData = $this->dicts['self_learn'][$toneType];
@@ -527,7 +529,7 @@ class PinyinConverter implements ConverterInterface {
             return;
         }
         $path = $this->config['dict']['polyphone_rules'];
-        $data = FileUtil::fileExists($path) ? require $path : [];
+        $data = FileUtil::fileExists($path) ? FileUtil::requireFile($path) : [];
         $this->dicts['polyphone_rules'] = is_array($data) ? $data : [];
     }
 
@@ -541,7 +543,7 @@ class PinyinConverter implements ConverterInterface {
             return;
         }
         $path = $this->config['dict']['self_learn'][$type];
-        $data = FileUtil::fileExists($path) ? require $path : [];
+        $data = FileUtil::fileExists($path) ? FileUtil::requireFile($path) : [];
         $this->dicts['self_learn'][$type] = is_array($data) ? $this->formatPinyinArray($data) : [];
     }
 
@@ -559,10 +561,11 @@ class PinyinConverter implements ConverterInterface {
             
             $pinyinArr = array_map(function($item) use ($wordLen) {
                 $trimmed = trim($item);
-                // 对于单字，保留空格分隔的多音字拼音
+                // 对于单字，完全去除空格
                 if ($wordLen === 1) {
-                    return preg_replace('/\s+/', ' ', $trimmed);
+                    return preg_replace('/\s+/', '', $trimmed);
                 } else {
+                    // 对于多字词语，规范化空格
                     return preg_replace('/\s+/', ' ', $trimmed);
                 }
             }, $pinyinArr);
@@ -582,7 +585,7 @@ class PinyinConverter implements ConverterInterface {
             return;
         }
         $path = $this->config['dict']['common'][$type];
-        $data = FileUtil::fileExists($path) ? require $path : [];
+        $data = FileUtil::fileExists($path) ? FileUtil::requireFile($path) : [];
         $this->dicts['common'][$type] = $this->formatPinyinArray($data);
     }
 
@@ -596,7 +599,7 @@ class PinyinConverter implements ConverterInterface {
             return;
         }
         $path = $this->config['dict']['rare'][$type];
-        $rawData = FileUtil::fileExists($path) ? require $path : [];
+        $rawData = FileUtil::fileExists($path) ? FileUtil::requireFile($path) : [];
         $rareData = [];
         foreach ($rawData as $key => $value) {
             if (is_string($key)) {
@@ -806,7 +809,7 @@ if (is_string($pinyin)) {
                 continue;
             }
             $path = $this->config['dict']['self_learn'][$type];
-            $existing = require $path;
+            $existing = FileUtil::requireFile($path);
             $existing = $this->formatPinyinArray($existing);
             $merged = array_merge($existing, $this->learnedChars[$type]);
             FileUtil::writeFile($path, "<?php\nreturn " . $this->shortArrayExport($merged) . ";\n");

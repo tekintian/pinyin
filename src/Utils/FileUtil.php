@@ -203,6 +203,28 @@ class FileUtil
     }
 
     /**
+     * 安全地加载PHP配置文件
+     *
+     * @param string $file PHP文件路径
+     * @param mixed $default 默认值
+     * @return mixed 文件内容或默认值
+     * @throws PinyinException 文件不存在或加载失败时抛出异常
+     */
+    public static function requireFile(string $file, $default = [])
+    {
+        if (!is_file($file)) {
+            return $default;
+        }
+
+        try {
+            $data = require $file;
+            return $data;
+        } catch (\Throwable $e) {
+            throw new PinyinException("Failed to require file: {$file}, error: " . $e->getMessage(), PinyinException::ERROR_DICT_LOAD_FAIL);
+        }
+    }
+
+    /**
      * 获取文件修改时间
      *
      * @param string $file 文件路径
