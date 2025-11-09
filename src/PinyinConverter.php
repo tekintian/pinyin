@@ -942,7 +942,7 @@ if (is_string($pinyin)) {
                 // 先处理词语后接非中文字符的情况
                 $result = preg_replace(
                     '/(' . preg_quote($word, '/') . ')([^\p{Han}])/u',
-                    $protectedPinyin . ' ' . '$2', // 直接添加空格分隔符
+                    $protectedPinyin . $separator . '$2', // 直接使用实际分隔符
                     $result
                 );
                 
@@ -1018,8 +1018,10 @@ if (is_string($pinyin)) {
         // 检查是否已经完成了自定义多字词语的替换
         // 如果文本中不再包含汉字，说明已经完成了自定义多字词语的替换，直接返回结果
         if (!preg_match('/\p{Han}/u', $textAfterMultiWords)) {
-            // 移除保护标记和分隔符标记
-            $textAfterMultiWords = str_replace(['[[CUSTOM_PINYIN:', ']]', '[[SEPARATOR]]'], '', $textAfterMultiWords);
+            // 移除保护标记，但保留分隔符标记用于后续处理
+            $textAfterMultiWords = str_replace(['[[CUSTOM_PINYIN:', ']]'], '', $textAfterMultiWords);
+            // 将分隔符标记转换为实际分隔符
+            $textAfterMultiWords = str_replace('[[SEPARATOR]]', $separator, $textAfterMultiWords);
             return $textAfterMultiWords;
         }
 
@@ -1068,8 +1070,13 @@ if (is_string($pinyin)) {
                     }
                     $previousWasCustomPinyin = false;
                     
-                    // 处理分隔符标记
-                    $part = str_replace('[[SEPARATOR]]', '', $part);
+                    // 处理分隔符标记 - 在自定义拼音和后续字符之间添加分隔符占位符
+                    if (strpos($part, '[[SEPARATOR]]') !== false) {
+                        // 如果包含分隔符标记，先处理分隔符
+                        $part = str_replace('[[SEPARATOR]]', '', $part);
+                        // 在自定义拼音和后续字符之间添加分隔符占位符
+                        $result[] = '';
+                    }
                     
                     for ($i = 0; $i < $len; $i++) {
                         $char = mb_substr($part, $i, 1, 'UTF-8');
@@ -1180,6 +1187,9 @@ if (is_string($pinyin)) {
             return $item !== ''; // 只过滤真正的空字符串，保留空字符串分隔符占位符
         });
         $finalResult = implode($separator, $filtered);
+        
+        // 处理分隔符标记 - 将[[SEPARATOR]]转换为实际分隔符
+        $finalResult = str_replace('[[SEPARATOR]]', $separator, $finalResult);
 
         // 合并连续分隔符
         if ($separator !== '') {
