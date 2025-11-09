@@ -935,11 +935,20 @@ if (is_string($pinyin)) {
             // 检查文本中是否包含该词语
             if (strpos($result, $word) !== false) {
                 $pinyin = $this->getFirstPinyin($item['pinyin']);
+                // 将拼音中的空格替换为实际分隔符
+                $processedPinyin = str_replace(' ', $separator, $pinyin);
                 // 使用特殊标记来保护拼音字符串不被后续处理拆分
-                $protectedPinyin = "[[CUSTOM_PINYIN:{$pinyin}]]";
+                $protectedPinyin = "[[CUSTOM_PINYIN:{$processedPinyin}]]";
                 
                 // 使用正则表达式进行替换
-                // 先处理词语后接非中文字符的情况
+                // 先处理词语前接非中文字符的情况
+                $result = preg_replace(
+                    '/([^\p{Han}])(' . preg_quote($word, '/') . ')/u',
+                    '$1' . $separator . $protectedPinyin,
+                    $result
+                );
+                
+                // 再处理词语后接非中文字符的情况
                 $result = preg_replace(
                     '/(' . preg_quote($word, '/') . ')([^\p{Han}])/u',
                     $protectedPinyin . $separator . '$2', // 直接使用实际分隔符
