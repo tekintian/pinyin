@@ -3,6 +3,7 @@ namespace tekintian\pinyin;
 
 use tekintian\pinyin\Contracts\ConverterInterface;
 use tekintian\pinyin\Exception\PinyinException;
+use tekintian\pinyin\Utils\FileUtil;
 
 /**
  * AI自学习汉字转拼音工具
@@ -168,26 +169,24 @@ class PinyinConverter implements ConverterInterface {
      */
     private function initDirectories() {
         $backupDir = $this->config['dict']['backup'];
-        if (!is_dir($backupDir)) {
-            mkdir($backupDir, 0755, true);
-        }
+        FileUtil::createDir($backupDir);
 
         foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
             foreach (['with_tone', 'no_tone'] as $toneType) {
                 $path = $this->config['dict'][$dictType][$toneType];
-                if (!file_exists($path)) {
-                    file_put_contents($path, "<?php\nreturn [];\n");
+                if (!FileUtil::fileExists($path)) {
+                    FileUtil::writeFile($path, "<?php\nreturn [];\n");
                 }
             }
         }
 
         $polyPath = $this->config['dict']['polyphone_rules'];
-        if (!file_exists($polyPath)) {
-            file_put_contents($polyPath, "<?php\nreturn [];\n");
+        if (!FileUtil::fileExists($polyPath)) {
+            FileUtil::writeFile($polyPath, "<?php\nreturn [];\n");
         }
         $freqPath = $this->config['dict']['self_learn']['frequency'];
-        if (!file_exists($freqPath)) {
-            file_put_contents($freqPath, "<?php\nreturn [];\n");
+        if (!FileUtil::fileExists($freqPath)) {
+            FileUtil::writeFile($freqPath, "<?php\nreturn [];\n");
         }
     }
 
@@ -240,7 +239,7 @@ class PinyinConverter implements ConverterInterface {
             return;
         }
         $path = $this->config['dict']['custom'][$type];
-        $data = file_exists($path) ? require $path : [];
+        $data = FileUtil::fileExists($path) ? require $path : [];
         $this->dicts['custom'][$type] = is_array($data) ? $this->formatPinyinArray($data) : [];
     }
 
@@ -272,7 +271,7 @@ class PinyinConverter implements ConverterInterface {
 
         $this->dicts['custom'][$type][$char] = $pinyinArray;
         $path = $this->config['dict']['custom'][$type];
-        file_put_contents($path, "<?php\nreturn " . $this->shortArrayExport($this->dicts['custom'][$type]) . ";\n");
+        FileUtil::writeFile($path, "<?php\nreturn " . $this->shortArrayExport($this->dicts['custom'][$type]) . ";\n");
         $this->initCustomMultiWords();
         echo "\n✅ 已添加自定义拼音：{$char} → " . implode('/', $pinyinArray);
     }
@@ -289,7 +288,7 @@ class PinyinConverter implements ConverterInterface {
         if (isset($this->dicts['custom'][$type][$char])) {
             unset($this->dicts['custom'][$type][$char]);
             $path = $this->config['dict']['custom'][$type];
-            file_put_contents($path, "<?php\nreturn " . $this->shortArrayExport($this->dicts['custom'][$type]) . ";\n");
+            FileUtil::writeFile($path, "<?php\nreturn " . $this->shortArrayExport($this->dicts['custom'][$type]) . ";\n");
             $this->initCustomMultiWords();
             echo "\n✅ 已删除自定义拼音：{$char}";
         }
@@ -303,7 +302,7 @@ class PinyinConverter implements ConverterInterface {
             return;
         }
         $path = $this->config['dict']['self_learn']['frequency'];
-        $data = file_exists($path) ? require $path : [];
+        $data = FileUtil::fileExists($path) ? require $path : [];
         $this->dicts['self_learn_frequency'] = is_array($data) ? $data : [];
         $this->charFrequency = $this->dicts['self_learn_frequency'];
     }
@@ -313,7 +312,7 @@ class PinyinConverter implements ConverterInterface {
      */
     private function saveSelfLearnFrequency() {
         $path = $this->config['dict']['self_learn']['frequency'];
-        file_put_contents($path, "<?php\nreturn " . $this->shortArrayExport($this->charFrequency) . ";\n");
+        FileUtil::writeFile($path, "<?php\nreturn " . $this->shortArrayExport($this->charFrequency) . ";\n");
         $this->dicts['self_learn_frequency'] = $this->charFrequency;
     }
 
@@ -331,10 +330,10 @@ class PinyinConverter implements ConverterInterface {
      * 获取指定声调类型的上次合并时间
      * @param string $toneType 声调类型
      * @return int 时间戳
-*/
+     */
     private function getLastMergeTimeFile($toneType) {
         $path = $this->config['dict']['backup'] . "/last_merge_{$toneType}.txt";
-        return file_exists($path) ? (int)file_get_contents($path) : 0;
+        return FileUtil::fileExists($path) ? (int)FileUtil::readFile($path) : 0;
     }
 
     /**
@@ -344,7 +343,7 @@ class PinyinConverter implements ConverterInterface {
     private function updateLastMergeTime($toneType) {
         $now = time();
         $path = $this->config['dict']['backup'] . "/last_merge_{$toneType}.txt";
-        file_put_contents($path, $now);
+        FileUtil::writeFile($path, $now);
         $this->lastMergeTime[$toneType] = $now;
     }
 
@@ -369,12 +368,12 @@ class PinyinConverter implements ConverterInterface {
             return;
         }
         $sourcePath = $this->config['dict'][$type][$toneType];
-        if (!file_exists($sourcePath)) {
+        if (!FileUtil::fileExists($sourcePath)) {
             return;
         }
         $backupDir = $this->config['dict']['backup'];
         $filename = basename($sourcePath, '.php') . '_' . date('YmdHis') . '.php';
-        copy($sourcePath, $backupDir . '/' . $filename);
+        FileUtil::copy($sourcePath, $backupDir . '/' . $filename);
     }
 
     /**
@@ -434,14 +433,14 @@ class PinyinConverter implements ConverterInterface {
         $this->backupDict('self_learn', $toneType);
 
         $commonPath = $this->config['dict']['common'][$toneType];
-        $commonData = file_exists($commonPath) ? require $commonPath : [];
+        $commonData = FileUtil::fileExists($commonPath) ? require $commonPath : [];
         $commonData = $this->formatPinyinArray($commonData);
 
         $selfLearnData = $this->dicts['self_learn'][$toneType];
         $sortedChars = $this->sortSelfLearnByFrequency($selfLearnData, $toneType);
 
         $mergedChars = [];
-foreach ($sortedChars as $char) {
+        foreach ($sortedChars as $char) {
             if (count($mergedChars) >= $mergeCount) {
                 break;
             }
@@ -455,7 +454,7 @@ foreach ($sortedChars as $char) {
             $commonData = $this->sortCommonDictByFrequency($commonData, $toneType);
         }
 
-        file_put_contents($commonPath, "<?php\nreturn " . $this->shortArrayExport($commonData) . ";\n");
+        FileUtil::writeFile($commonPath, "<?php\nreturn " . $this->shortArrayExport($commonData) . ";\n");
         $this->dicts['common'][$toneType] = $commonData;
     }
 
@@ -510,7 +509,7 @@ foreach ($sortedChars as $char) {
             unset($selfLearnData[$char]);
         }
         $selfLearnPath = $this->config['dict']['self_learn'][$toneType];
-        file_put_contents($selfLearnPath, "<?php\nreturn " . $this->shortArrayExport($selfLearnData) . ";\n");
+        FileUtil::writeFile($selfLearnPath, "<?php\nreturn " . $this->shortArrayExport($selfLearnData) . ";\n");
         $this->dicts['self_learn'][$toneType] = $selfLearnData;
         $this->learnedChars[$toneType] = array_diff_key($this->learnedChars[$toneType], array_flip($charsToClean));
 
@@ -528,7 +527,7 @@ foreach ($sortedChars as $char) {
             return;
         }
         $path = $this->config['dict']['polyphone_rules'];
-        $data = file_exists($path) ? require $path : [];
+        $data = FileUtil::fileExists($path) ? require $path : [];
         $this->dicts['polyphone_rules'] = is_array($data) ? $data : [];
     }
 
@@ -542,7 +541,7 @@ foreach ($sortedChars as $char) {
             return;
         }
         $path = $this->config['dict']['self_learn'][$type];
-        $data = file_exists($path) ? require $path : [];
+        $data = FileUtil::fileExists($path) ? require $path : [];
         $this->dicts['self_learn'][$type] = is_array($data) ? $this->formatPinyinArray($data) : [];
     }
 
@@ -583,7 +582,7 @@ foreach ($sortedChars as $char) {
             return;
         }
         $path = $this->config['dict']['common'][$type];
-$data = file_exists($path) ? require $path : [];
+        $data = FileUtil::fileExists($path) ? require $path : [];
         $this->dicts['common'][$type] = $this->formatPinyinArray($data);
     }
 
@@ -597,7 +596,7 @@ $data = file_exists($path) ? require $path : [];
             return;
         }
         $path = $this->config['dict']['rare'][$type];
-        $rawData = file_exists($path) ? require $path : [];
+        $rawData = FileUtil::fileExists($path) ? require $path : [];
         $rareData = [];
         foreach ($rawData as $key => $value) {
             if (is_string($key)) {
@@ -810,7 +809,7 @@ if (is_string($pinyin)) {
             $existing = require $path;
             $existing = $this->formatPinyinArray($existing);
             $merged = array_merge($existing, $this->learnedChars[$type]);
-            file_put_contents($path, "<?php\nreturn " . $this->shortArrayExport($merged) . ";\n");
+            FileUtil::writeFile($path, "<?php\nreturn " . $this->shortArrayExport($merged) . ";\n");
             $this->dicts['self_learn'][$type] = $merged;
             $this->learnedChars[$type] = [];
         }
