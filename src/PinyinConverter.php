@@ -1020,7 +1020,7 @@ $data = file_exists($path) ? require $path : [];
         
         // 如果有自定义多字词语，先处理它们
         if (!empty($customPinyinMatches)) {
-            $parts = preg_split('/\[\[CUSTOM_PINYIN:[^\]]+\]\]/', $textAfterMultiWords, -1, PREG_SPLIT_DELIM_CAPTURE);
+            $parts = preg_split('/(\[\[CUSTOM_PINYIN:[^\]]+\]\])/', $textAfterMultiWords, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
             
             foreach ($parts as $part) {
                 if (isset($customPinyinMatches[$part])) {
@@ -1075,6 +1075,7 @@ $data = file_exists($path) ? require $path : [];
                     // 处理末尾的累积单词
                     if ($currentWord !== '') {
                         $result[] = $currentWord;
+                        $currentWord = '';
                     }
                 }
             }
