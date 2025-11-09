@@ -119,6 +119,35 @@ class FileUtil
         
         return true;
     }
+    
+    /**
+     * 复制单个文件
+     *
+     * @param string $sourcePath 源文件路径
+     * @param string $destinationPath 目标文件路径
+     * @return bool 复制结果
+     * @throws PinyinException 复制失败时抛出异常
+     */
+    public static function copyFile(string $sourcePath, string $destinationPath): bool
+    {
+        // 确保源文件存在
+        if (!is_file($sourcePath)) {
+            throw new PinyinException("Source file does not exist: {$sourcePath}", PinyinException::ERROR_FILE_NOT_FOUND);
+        }
+        
+        // 确保目标目录存在
+        $targetDir = dirname($destinationPath);
+        if (!is_dir($targetDir)) {
+            self::createDir($targetDir);
+        }
+        
+        // 复制文件
+        if (!@copy($sourcePath, $destinationPath)) {
+            throw new PinyinException("Failed to copy file: {$sourcePath} to {$destinationPath}", PinyinException::ERROR_FILE_NOT_FOUND);
+        }
+        
+        return true;
+    }
     /**
      * 递归创建目录
      *
