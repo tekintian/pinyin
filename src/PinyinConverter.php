@@ -1017,8 +1017,15 @@ if (is_string($pinyin)) {
         $specialCharParam = '',
         $polyphoneTempMap = []
     ) {
-        $text = preg_replace('/[\x00-\x1F\x7F%]/', '', $text);
+        //$text = preg_replace('/[\x00-\x1F\x7F%]/', '', $text);
         $charConfig = $this->parseCharParam($specialCharParam);
+        // 如果特殊字符是 delete 则直接将待处理字符串中的所有非中文原文和数字与配置中定义的允许的字符以外的所有字符替换为空格
+        if ($charConfig['mode'] === 'delete') {
+            $text = preg_replace('/[^\x{4e00}-\x{9fa5}'.$this->config['special_char']['delete_allow'].']+/u', ' ', $text);
+           // 如果 $text中包含2个以上的连续空格则只保留一个空格
+           if(strpos($text, '  ') !== false) $text = preg_replace('/\s{2,}/', ' ', $text);
+        }
+
         $cacheKey = md5(json_encode([$text, $separator, $withTone, $charConfig, $polyphoneTempMap]));
 
         // 缓存检查
@@ -1033,11 +1040,6 @@ if (is_string($pinyin)) {
         // 多字词语替换
         list($textAfterMultiWords, $processedWords) = $this->replaceCustomMultiWords($text, $withTone, $separator);
         
-        // 调试：检查替换后的文本
-        if (strpos($text, '！@#￥%……&*（）【】{}|、；‘：“，。、？') !== false) {
-            error_log("替换后的文本: " . $textAfterMultiWords);
-        }
-
         // 检查是否已经完成了自定义多字词语的替换
         // 如果文本中不再包含汉字，说明已经完成了自定义多字词语的替换，直接返回结果
         if (!preg_match('/\p{Han}/u', $textAfterMultiWords)) {
