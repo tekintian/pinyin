@@ -718,7 +718,7 @@ $data = file_exists($path) ? require $path : [];
             return array_unique(array_filter($result));
         }
         
-        if (is_string($pinyin)) {
+if (is_string($pinyin)) {
             // 如果是字符串，按空格拆分
             return array_unique(array_filter(explode(' ', $pinyin)));
         }
@@ -923,6 +923,11 @@ $data = file_exists($path) ? require $path : [];
         $result = $text;
         $processedWords = [];
 
+        // 首先，按照词语长度降序排序，优先替换长词语
+        usort($this->customMultiWords[$type], function($a, $b) {
+            return mb_strlen($b['word']) - mb_strlen($a['word']);
+        });
+
         foreach ($this->customMultiWords[$type] as $item) {
             $word = $item['word'];
             if (in_array($word, $processedWords)) continue;
@@ -930,10 +935,20 @@ $data = file_exists($path) ? require $path : [];
             // 检查文本中是否包含该词语
             if (strpos($result, $word) !== false) {
                 $pinyin = $this->getFirstPinyin($item['pinyin']);
-                // 修复：确保自定义多字词语的拼音中正确保留空格
                 // 使用特殊标记来保护拼音字符串不被后续处理拆分
                 $protectedPinyin = "[[CUSTOM_PINYIN:{$pinyin}]]";
+                
+                // 使用正则表达式进行替换
+                // 先处理词语后接非中文字符的情况
+                $result = preg_replace(
+                    '/(' . preg_quote($word, '/') . ')([^\p{Han}])/u',
+                    $protectedPinyin . ' ' . '$2', // 直接添加空格分隔符
+                    $result
+                );
+                
+                // 再处理词语出现在文本末尾的情况
                 $result = str_replace($word, $protectedPinyin, $result);
+                
                 $processedWords[] = $word;
             }
         }
@@ -1003,8 +1018,8 @@ $data = file_exists($path) ? require $path : [];
         // 检查是否已经完成了自定义多字词语的替换
         // 如果文本中不再包含汉字，说明已经完成了自定义多字词语的替换，直接返回结果
         if (!preg_match('/\p{Han}/u', $textAfterMultiWords)) {
-            // 移除保护标记
-            $textAfterMultiWords = str_replace(['[[CUSTOM_PINYIN:', ']]'], '', $textAfterMultiWords);
+            // 移除保护标记和分隔符标记
+            $textAfterMultiWords = str_replace(['[[CUSTOM_PINYIN:', ']]', '[[SEPARATOR]]'], '', $textAfterMultiWords);
             return $textAfterMultiWords;
         }
 
@@ -1020,6 +1035,15 @@ $data = file_exists($path) ? require $path : [];
         
         // 如果有自定义多字词语，先处理它们
         if (!empty($customPinyinMatches)) {
+            // 使用更简单的逻辑：在自定义拼音后面跟着非中文字符时添加分隔符占位符
+            $textAfterMultiWords = preg_replace_callback(
+                '/(\[\[CUSTOM_PINYIN:[^\]]+\]\])([^\p{Han}])/u',
+                function($matches) {
+                    return $matches[1] . '[[SEPARATOR]]' . $matches[2];
+                },
+                $textAfterMultiWords
+            );
+            
             $parts = preg_split('/(\[\[CUSTOM_PINYIN:[^\]]+\]\])/', $textAfterMultiWords, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
             
             $previousWasCustomPinyin = false;
@@ -1043,6 +1067,9 @@ $data = file_exists($path) ? require $path : [];
                         $result[] = '';
                     }
                     $previousWasCustomPinyin = false;
+                    
+                    // 处理分隔符标记
+                    $part = str_replace('[[SEPARATOR]]', '', $part);
                     
                     for ($i = 0; $i < $len; $i++) {
                         $char = mb_substr($part, $i, 1, 'UTF-8');
