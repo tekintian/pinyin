@@ -459,7 +459,7 @@ PHP;
         $selfLearnTpl = "<?php\nreturn [];\n";
         file_put_contents($this->dictDir . 'self_learn_with_tone.php', $selfLearnTpl);
         file_put_contents($this->dictDir . 'self_learn_no_tone.php', $selfLearnTpl);
-        file_put_contents($this->dictDir . 'self_learn_frequency.php', $selfLearnTpl);
+        file_put_contents($this->dictDir . 'char_frequency.php', "<?php\nreturn [];");
         
         echo "\n📋 生成元数据及辅助模板（多音字规则为紧凑友好格式）";
     }

@@ -27,14 +27,15 @@ class PinyinConverter implements ConverterInterface {
             'self_learn' => [
                 'with_tone' => __DIR__.'/../data/self_learn_with_tone.php',
                 'no_tone' => __DIR__.'/../data/self_learn_no_tone.php',
-                'frequency' => __DIR__.'/../data/self_learn_frequency.php'
+                'frequency' => __DIR__.'/../data/char_frequency.php'
             ],
             'custom' => [
                 'with_tone' => __DIR__.'/../data/custom_with_tone.php',
                 'no_tone' => __DIR__.'/../data/custom_no_tone.php'
             ],
             'polyphone_rules' => __DIR__.'/../data/polyphone_rules.php',
-            'backup' => __DIR__.'/../data/backup/'
+            'backup' => __DIR__.'/../data/backup/',
+            'not_found' => __DIR__.'/../data/not_found_chars.php'
         ],
         'special_char' => [
             'default_mode' => 'delete',
@@ -67,7 +68,8 @@ class PinyinConverter implements ConverterInterface {
         'self_learn' => ['with_tone' => null, 'no_tone' => null],
         'self_learn_frequency' => null,
         'custom' => ['with_tone' => null, 'no_tone' => null],
-        'polyphone_rules' => null
+        'polyphone_rules' => null,
+        'not_found' => null
     ];
 
     /**
@@ -78,6 +80,12 @@ class PinyinConverter implements ConverterInterface {
         'with_tone' => [],
         'no_tone' => []
     ];
+
+    /**
+     * 未找到拼音的字符缓存
+     * @var array
+     */
+    private $notFoundChars = [];
 
     /**
      * 自学习字使用频率计数
@@ -96,6 +104,12 @@ class PinyinConverter implements ConverterInterface {
      * @var array
      */
     private $cache = [];
+
+    /**
+     * 频率数据是否已修改（需要在析构函数中保存）
+     * @var bool
+     */
+    private $frequencyModified = false;
 
     /**
      * 特殊字符最终替换映射
@@ -189,6 +203,16 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
         $freqPath = $this->config['dict']['self_learn']['frequency'];
         if (!FileUtil::fileExists($freqPath)) {
             FileUtil::writeFile($freqPath, "<?php\nreturn [];\n");
+        }
+        
+        $notFoundPath = $this->config['dict']['not_found'];
+        if (!FileUtil::fileExists($notFoundPath)) {
+            FileUtil::writeFile($notFoundPath, "<?php\nreturn [];\n");
+        }
+        
+        $notFoundPath = $this->config['dict']['not_found'];
+        if (!FileUtil::fileExists($notFoundPath)) {
+            FileUtil::writeFile($notFoundPath, "<?php\nreturn [];\n");
         }
     }
 
@@ -477,9 +501,9 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
      */
     private function sortSelfLearnByFrequency($selfLearnData, $toneType) {
         $chars = array_keys($selfLearnData);
-        usort($chars, function ($a, $b) use ($toneType) {
-            $freqA = $this->charFrequency[$toneType][$a] ?? 0;
-            $freqB = $this->charFrequency[$toneType][$b] ?? 0;
+        usort($chars, function ($a, $b) {
+            $freqA = $this->charFrequency[$a] ?? 0;
+            $freqB = $this->charFrequency[$b] ?? 0;
             return $freqB - $freqA;
         });
         return $chars;
@@ -493,9 +517,9 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
      */
     private function sortCommonDictByFrequency($commonData, $toneType) {
         $chars = array_keys($commonData);
-        usort($chars, function ($a, $b) use ($toneType) {
-            $freqA = $this->charFrequency[$toneType][$a] ?? 0;
-            $freqB = $this->charFrequency[$toneType][$b] ?? 0;
+        usort($chars, function ($a, $b) {
+            $freqA = $this->charFrequency[$a] ?? 0;
+            $freqB = $this->charFrequency[$b] ?? 0;
             return $freqB - $freqA;
         });
         $sorted = [];
@@ -590,6 +614,18 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
         $path = $this->config['dict']['polyphone_rules'];
         $data = FileUtil::fileExists($path) ? FileUtil::requireFile($path) : [];
         $this->dicts['polyphone_rules'] = is_array($data) ? $data : [];
+    }
+
+    /**
+     * 加载未找到拼音的字符文件
+     */
+    private function loadNotFoundChars() {
+        if ($this->dicts['not_found'] !== null) {
+            return;
+        }
+        $path = $this->config['dict']['not_found'];
+        $data = FileUtil::fileExists($path) ? FileUtil::requireFile($path) : [];
+        $this->dicts['not_found'] = is_array($data) ? $data : [];
     }
 
     /**
@@ -690,7 +726,8 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
         $type = $withTone ? 'with_tone' : 'no_tone';
         
         // 这里直接使用特殊字符中的 delete_allow  配置项, 既 数字/字母和允许的特殊字符直接返回
-        if (preg_match('/^['.$this->config['special_char']['delete_allow'].']+$/', $char)) {
+        // 但排除汉字字符，让汉字进入拼音转换流程
+        if (preg_match('/^['.$this->config['special_char']['delete_allow'].']+$/', $char) && !preg_match('/^[\x{4e00}-\x{9fff}]$/u', $char)) {
             return $char;
         }
 
@@ -737,7 +774,14 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
         }
         
         // 修复：如果没有找到拼音，返回汉字本身
-        return !empty(trim($pinyin)) ? $this->cleanPinyin($pinyin, true) : $char;
+        $result = !empty(trim($pinyin)) ? $this->cleanPinyin($pinyin, true) : $char;
+        
+        // 更新字符使用频率（仅在成功获取拼音时）
+        if ($result !== $char && preg_match('/^[a-zāáǎàōóǒòēéěèīíǐìūúǔùüǖǘǚǜ]+$/i', $result)) {
+            $this->updateCharFrequency($char, $type);
+        }
+        
+        return $result;
     }
     
     /**
@@ -793,6 +837,9 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
         if (isset($this->basicPinyinMap[$char])) {
             return $withTone ? [$this->basicPinyinMap[$char][0]] : [$this->basicPinyinMap[$char][1]];
         }
+
+        // 5. 在所有字典中都找不到的字符，保存到未找到字符文件
+        $this->saveNotFoundChar($char);
 
         return [$char];
     }
@@ -895,6 +942,54 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
     }
 
     /**
+     * 更新字符/词语使用频率（统计所有转换的字词）
+     * @param string $char 汉字字符或词语
+     * @param string $type 拼音类型（'with_tone' 或 'no_tone'）
+     */
+    private function updateCharFrequency($char, $type) {
+        // 确保频率数据已加载
+        $this->loadSelfLearnFrequency();
+        
+        // 更新频率计数（统计所有转换的字词，不区分声调类型）
+        if (!isset($this->charFrequency[$char])) {
+            $this->charFrequency[$char] = 0;
+        }
+        $this->charFrequency[$char]++;
+        
+        // 标记频率数据已修改，需要在析构函数中保存
+        $this->frequencyModified = true;
+    }
+
+    /**
+     * 保存未找到拼音的字符到文件
+     * @param string $char 未找到拼音的字符
+     */
+    private function saveNotFoundChar($char) {
+        $this->loadNotFoundChars();
+        
+        // 如果字符已经存在，则不重复保存
+        if (in_array($char, $this->dicts['not_found'])) {
+            return;
+        }
+        
+        // 添加到缓存
+        $this->notFoundChars[] = $char;
+        $this->dicts['not_found'][] = $char;
+        
+        // 保存到文件
+        $path = $this->config['dict']['not_found'];
+        $existing = FileUtil::requireFile($path);
+        $existing = is_array($existing) ? $existing : [];
+        
+        // 去重并保存
+        $merged = array_unique(array_merge($existing, $this->notFoundChars));
+        FileUtil::writeFile($path, "<?php\nreturn " . $this->shortArrayExport($merged) . ";\n");
+        
+        // 清空缓存，避免重复保存
+        $this->notFoundChars = [];
+    }
+
+    /**
      * 保存自学习内容到文件
      */
     private function saveLearnedChars() {
@@ -956,8 +1051,8 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
         $mode = $charConfig['mode'];
         $customMap = $charConfig['map'];
     
-        // 汉字/数字/字母直接返回（优先级最高）
-        if (preg_match('#^[\x{4e00}-\x{9fa5}\p{N}\p{L}]$#u', $char)) {
+        // 基本汉字/数字/字母直接返回（优先级最高）
+        if (preg_match('#^[\x{4e00}-\x{9fa5}\p{N}a-zA-Z]$#u', $char)) {
             return $char;
         }
     
@@ -1059,6 +1154,9 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
                         },
                         $result
                     );
+                    
+                    // 记录自定义词语的使用频率
+                    $this->updateCharFrequency($word, $type);
                     
                     $processedWords[] = $word;
                 }
@@ -1326,9 +1424,14 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
     }
 
     /**
-     * 析构函数：保存自学习内容
+     * 析构函数：保存自学习内容和频率数据
      */
     public function __destruct() {
         $this->saveLearnedChars();
+        
+        // 保存频率数据（如果已修改）
+        if ($this->frequencyModified) {
+            $this->saveSelfLearnFrequency();
+        }
     }
 }

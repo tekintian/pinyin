@@ -128,4 +128,14 @@ return [
         ['type' => 'post', 'char' => '试', 'pinyin' => 'diào'],  // 调试（技术：代码调试）
         ['type' => 'word', 'word' => '调度', 'pinyin' => 'diào'], // 调度（任务调度）
     ],
+    '单' => [
+        ['type' => 'post', 'char' => '于', 'pinyin' => 'chán'],  // 单于
+    ],
+    '尉'=>[
+        ['type' => 'post', 'char' => '迟', 'pinyin' => 'yù'],   // 尉迟
+    ],
+    '说'=>[
+        ['type' => 'post', 'char' => '客', 'pinyin' => 'shuì'],   // 说客
+        ['type' => 'pre', 'char' => '游', 'pinyin' => 'shuì'],   // 游说
+    ],
 ];
