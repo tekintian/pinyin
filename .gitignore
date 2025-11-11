@@ -53,6 +53,5 @@ Thumbs.db
 /dev/
 
 # Custom
-/tests/pinyin_test_dict
 \#src/
 /pinyin.sublime-workspace

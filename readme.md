@@ -19,6 +19,22 @@
 ✅ 缺少功能：将常用字典中调用频率低的字移到生僻字字典
 ❌ 等你来发现
 
+
+
+unicode汉字拼音数据查询  拼音位于 kMandarin 字段
+https://www.unicode.org/cgi-bin/GetUnihanData.pl?codepoint=%E8%AF%B4
+
+各区块统计:
+CJK基本汉字: 20924 个字符
+CJK扩展A区: 5786 个字符
+CJK扩展B区: 14614 个字符
+CJK扩展C区: 506 个字符
+CJK扩展D区: 73 个字符
+CJK扩展E区: 870 个字符
+CJK扩展F区: 121 个字符
+CJK扩展G区: 1123 个字符
+
+
 ## 功能特点
 
 - ✨ **精准的汉字转拼音**：支持常用字和生僻字的准确拼音转换

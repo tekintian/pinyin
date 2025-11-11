@@ -2,9 +2,9 @@
 
 require_once __DIR__ . '/vendor/autoload.php';
 
-use SebastianBergmann\CodeCoverage\Node\File;
 use tekintian\pinyin\PinyinConverter;
-use tekintian\pinyin\Utils\FileUtil;
+// use SebastianBergmann\CodeCoverage\Node\File;
+// use tekintian\pinyin\Utils\FileUtil;
 
 require_once __DIR__.'/test_helper.php';
 

@@ -150,3 +150,58 @@ if (!function_exists('dump')) {
 
 	}
 }
+
+if (!function_exists('get_content_from_url')) {
+	/**
+	 * 从指定URL获取内容，并可选择性地缓存到本地文件
+	 * 
+	 * @param string $url 要获取内容的URL地址
+	 * @param string|null $saveToFile 可选，用于缓存内容的本地文件路径
+	 * @return string|null 返回获取到的内容，失败时返回null
+	 * @throws Exception 网络请求失败时抛出异常
+	 */
+	function get_content_from_url($url, $saveToFile = null, $timeout = 10)
+	{
+		try {
+			if ($saveToFile && file_exists($saveToFile)) {
+				$response = file_get_contents($saveToFile);
+				if ($response !== false) {
+					return $response;
+				}
+			}
+
+			$context = stream_context_create([
+				'http' => [
+                    'timeout' => $timeout,
+                    'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'header' => "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n" .
+                               "Accept-Language: zh-CN,zh;q=0.8,en-US;q=0.5,en;q=0.3\r\n" .
+                               "Connection: close\r\n"
+                ],
+                'ssl' => [
+                    'verify_peer' => false,
+                    'verify_peer_name' => false
+                ]
+			]);
+
+			$response = @file_get_contents($url, false, $context);
+			if ($response === false) {
+				echo "❌ 请求失败\n";
+                $error = error_get_last();
+                if ($error) {
+                    echo "错误信息: " . $error['message'] . "\n";
+                }
+				return null;
+			}
+			
+			// 确保目录存在
+			@mkdir(dirname($saveToFile), 0755, true);
+			// 写入文件
+			file_put_contents($saveToFile, $response);
+
+			return $response;
+		} catch (Exception $e) {
+			// 忽略网络错误
+		}
+	}
+}
