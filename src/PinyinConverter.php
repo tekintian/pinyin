@@ -35,7 +35,7 @@ class PinyinConverter implements ConverterInterface {
             ],
             'polyphone_rules' => __DIR__.'/../data/polyphone_rules.php',
             'backup' => __DIR__.'/../data/backup/',
-            'not_found' => __DIR__.'/../data/not_found_chars.php'
+            'not_found' => __DIR__.'/../data/diy/not_found_chars.php'
         ],
         'special_char' => [
             'default_mode' => 'delete',
