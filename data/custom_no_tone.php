@@ -28,7 +28,6 @@ return [
     '部署' => ['bu shu'],
     '运维' => ['yun wei'],
     '开发' => ['kai fa'],
-    '测试' => ['ce shi'],
     '上线' => ['shang xian'],
     '下线' => ['xia xian'],
     '重构' => ['zhong gou'],
