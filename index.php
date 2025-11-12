@@ -19,12 +19,13 @@ function pinyin($text, $separator = ' ', $withTone = false, $specialCharParam = 
 
 $converter = new PinyinConverter();
 
-$testText = '你好！@#￥%……&*（）【】{}|、；‘：“，。、？';
-        
+$testText = '你好！@#￥%……&*（）【】{}|、；‘：“，。、？';       
 $result1 = $converter->convert($testText, ' ', false,  [
     'mode' => 'replace',
     'map' => ['！' => '!', '？' => '?']
 ]);
+vv($result1);
 
-
-vd($result1);
+$char = '䶮';
+$resultWithTone = $converter->convert($char, ' ', true);
+vv($resultWithTone);
