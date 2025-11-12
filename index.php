@@ -19,13 +19,38 @@ function pinyin($text, $separator = ' ', $withTone = false, $specialCharParam = 
 
 $converter = new PinyinConverter();
 
-$testText = '你好！@#￥%……&*（）【】{}|、；‘：“，。、？';       
-$result1 = $converter->convert($testText, ' ', false,  [
-    'mode' => 'replace',
-    'map' => ['！' => '!', '？' => '?']
-]);
-vv($result1);
+// $testText = '你好！@#￥%……&*（）【】{}|、；‘：“，。、？';       
+// $result1 = $converter->convert($testText, ' ', false,  [
+//     'mode' => 'replace',
+//     'map' => ['！' => '!', '？' => '?']
+// ]);
+// vv($result1);
 
-$char = '䶮';
-$resultWithTone = $converter->convert($char, ' ', true);
-vv($resultWithTone);
+// $char = '䶮';
+// $resultWithTone = $converter->convert($char, ' ', true);
+// vv($resultWithTone);
+
+$options = [
+    'dict_loading' => [
+        'lazy_loading' => true,
+        'preload_priority' => ['custom', 'common']
+    ],
+    'special_char' => [
+        'default_mode' => 'keep'
+    ]
+];
+$customConverter = new PinyinConverter($options);
+// 验证配置生效
+$result = $customConverter->convert('你好！', ' ', false);
+
+vv($result);
+
+$rareChars = ['䶮', '䲜'];
+        
+foreach ($rareChars as $char) {
+    $resultWithTone = $converter->convert($char, ' ', true);
+    $resultWithoutTone = $converter->convert($char, ' ', false);
+    
+   vv([$resultWithTone, $resultWithoutTone]);
+
+}
