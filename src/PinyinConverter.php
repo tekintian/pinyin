@@ -1801,16 +1801,6 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
             return $replaced !== null ? $replaced : $char;
         }
     
-        // 以下为 delete/keep 模式的逻辑（不变）
-        // $blockedChars = ['%', '~', '!', '^', '&', '*', '`', '|', '\\', '{', '}', '<', '>', '【', '】', '、', '。', '，', '；', '：', '"', '"', '‘', '’', '（', '）'];
-        // if (in_array($char, $blockedChars)) {
-        //     return '';
-        // }
-    
-        // if (ord($char) < 32 || ord($char) > 126) {
-        //     return '';
-        // }
-    
         switch ($mode) {
             case 'delete':
                 $deleteAllow = $this->config['special_char']['delete_allow'];
