@@ -16,11 +16,22 @@ $options = [
     'add-custom' => null,         // 添加自定义拼音: 汉字:拼音
     'remove-custom' => null,      // 删除自定义拼音: 汉字
     'merge-self-learn' => false,  // 执行自学习字典合并
+    'check-custom' => false,      // 检查自定义字典
+    'fix-custom' => false,        // 修复自定义字典
+    'verbose' => false,           // 显示详细信息
     'help' => false               // 显示帮助
 ];
 
 $help = <<<"HELP"
-汉字转拼音命令行工具 (基于 PinyinConverter)
+AI自学习汉字转拼音命令行工具 (基于 PinyinConverter)
+
+核心特性:
+✓ 支持Unihan字典，覆盖完整CJK字符集
+✓ 智能多音字识别，基于上下文自动选择正确读音
+✓ 自定义字典优先级管理（自定义 > 常用 > 生僻字 > Unihan）
+✓ 自学习功能，自动学习生僻字拼音
+✓ 高性能缓存机制，支持LRU缓存策略
+✓ 完整的特殊字符处理（删除/保留/替换模式）
 
 用法:
     ./pinyin "文本内容" [选项]
@@ -31,6 +42,15 @@ $help = <<<"HELP"
     ./pinyin "你好世界" -s "-"              # 使用连字符分隔
     ./pinyin "你好世界" --slug              # 生成URL Slug
 
+Unihan字典支持:
+    ./pinyin "龘靐齉䶮䲜"                   # 生僻字自动转换
+    ./pinyin "𠮷𠂇𠀾𠀿" --with-tone         # 扩展汉字集支持
+
+多音字智能识别:
+    ./pinyin "行长行为"                     # 自动识别"行"的不同读音
+    ./pinyin "长大长度"                     # 自动识别"长"的不同读音
+    ./pinyin "音乐乐趣"                     # 自动识别"乐"的不同读音
+
 特殊字符处理:
     ./pinyin "你好！世界"                   # 默认删除特殊字符
     ./pinyin "你好！世界" --mode keep       # 保留特殊字符
@@ -40,6 +60,9 @@ $help = <<<"HELP"
     ./pinyin --add-custom="好:hao"          # 添加自定义拼音（无声调）
     ./pinyin --add-custom="好:hǎo" --with-tone # 添加带声调自定义拼音
     ./pinyin --remove-custom="好"           # 删除自定义拼音
+    ./pinyin --check-custom                 # 检查自定义字典
+    ./pinyin --check-custom --verbose      # 详细检查自定义字典
+    ./pinyin --fix-custom                   # 自动修复自定义字典
 
 自学习功能:
     ./pinyin --merge-self-learn            # 执行自学习字典合并
@@ -60,11 +83,14 @@ $help = <<<"HELP"
     --merge-self-learn         执行自学习字典合并
     -h, --help                显示此帮助信息
 
-示例:
+高级示例:
     ./pinyin "Vue3开发企业级AI服务" --with-tone
     ./pinyin "云南省昆明市" --slug
     ./pinyin "你好！@#世界" --mode keep
+    ./pinyin "龘靐齉䶮䲜" --with-tone
+    ./pinyin "行长行为长大长度音乐乐趣"     # 多音字智能识别
     ./pinyin --add-custom="系:xi" --add-custom="术:shu"
+    ./pinyin --add-custom="人工智能:rén gōng zhì néng" --with-tone
 HELP;
 
 // 解析命令行参数
@@ -145,7 +171,7 @@ function main($argv) {
     $inputText = parseArguments($argv);
     
     // 显示帮助
-    if ($options['help'] || (empty($inputText) && !$options['add-custom'] && !$options['remove-custom'] && !$options['merge-self-learn'])) {
+    if ($options['help'] || (empty($inputText) && !$options['add-custom'] && !$options['remove-custom'] && !$options['merge-self-learn'] && !$options['check-custom'] && !$options['fix-custom'])) {
         echo $help;
         exit(0);
     }
@@ -184,6 +210,59 @@ function main($argv) {
             echo "   失败项目: " . count($result['fail']) . "\n";
             foreach ($result['fail'] as $fail) {
                 echo "     - {$fail['toneType']}: {$fail['error']}\n";
+            }
+        }
+        exit(0);
+    }
+    
+    // 检查自定义字典
+    if ($options['check-custom']) {
+        $result = $converter->checkAndFixCustomDict($options['with-tone'], false, $options['verbose']);
+        echo "🔍 自定义字典检查结果:\n";
+        echo "   总条目数: {$result['total_entries']}\n";
+        echo "   有效条目: {$result['valid_entries']}\n";
+        echo "   发现问题: {$result['issues_found']}\n";
+        
+        if ($options['verbose'] && !empty($result['details'])) {
+            echo "\n📋 详细问题报告:\n";
+            foreach ($result['details'] as $detail) {
+                echo "   - 字符: {$detail['char']}\n";
+                echo "     拼音: " . implode(', ', $detail['pinyin']) . "\n";
+                if (!empty($detail['issues'])) {
+                    echo "     问题: " . implode('; ', $detail['issues']) . "\n";
+                }
+                if (!empty($detail['suggestions'])) {
+                    echo "     建议: " . implode('; ', $detail['suggestions']) . "\n";
+                }
+                echo "\n";
+            }
+        }
+        exit(0);
+    }
+    
+    // 修复自定义字典
+    if ($options['fix-custom']) {
+        $result = $converter->checkAndFixCustomDict($options['with-tone'], true, $options['verbose']);
+        echo "🔧 自定义字典修复完成:\n";
+        echo "   总条目数: {$result['total_entries']}\n";
+        echo "   有效条目: {$result['valid_entries']}\n";
+        echo "   发现问题: {$result['issues_found']}\n";
+        echo "   修复问题: {$result['issues_fixed']}\n";
+        
+        if ($options['verbose'] && !empty($result['details'])) {
+            echo "\n📋 修复详情:\n";
+            foreach ($result['details'] as $detail) {
+                echo "   - 字符: {$detail['char']}\n";
+                if (isset($detail['fix_applied'])) {
+                    echo "     原拼音: " . implode(', ', $detail['pinyin']) . "\n";
+                    echo "     新拼音: " . implode(', ', $detail['fix_applied']) . "\n";
+                } else {
+                    echo "     拼音: " . implode(', ', $detail['pinyin']) . "\n";
+                }
+                if (!empty($detail['issues'])) {
+                    echo "     问题: " . implode('; ', $detail['issues']) . "\n";
+                }
+                echo "\n";
             }
         }
         exit(0);
