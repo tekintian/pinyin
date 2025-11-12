@@ -18,6 +18,10 @@ class PinyinConverter implements ConverterInterface {
      */
     private $config = [
         'dict' => [
+            'custom' => [
+                'with_tone' => __DIR__.'/../data/custom_with_tone.php',
+                'no_tone' => __DIR__.'/../data/custom_no_tone.php'
+            ],
             'common' => [
                 'with_tone' => __DIR__.'/../data/common_with_tone.php',
                 'no_tone' => __DIR__.'/../data/common_no_tone.php'
@@ -26,16 +30,13 @@ class PinyinConverter implements ConverterInterface {
                 'with_tone' => __DIR__.'/../data/rare_with_tone.php',
                 'no_tone' => __DIR__.'/../data/rare_no_tone.php'
             ],
-            'custom' => [
-                'with_tone' => __DIR__.'/../data/custom_with_tone.php',
-                'no_tone' => __DIR__.'/../data/custom_no_tone.php'
+            'unihan' => [
+                'with_tone' => __DIR__.'/../data/unihan/cjk_ext_a.php', // 扩展A的生僻字
+                'no_tone' => __DIR__.'/../data/unihan/cjk_ext_a_no_tone.php' // 扩展A的生僻字 不带声调
             ],
             'self_learn' => [
                 'with_tone' => __DIR__.'/../data/self_learn_with_tone.php',
                 'no_tone' => __DIR__.'/../data/self_learn_no_tone.php'
-            ],
-            'unihan' => [
-                'with_tone' => __DIR__.'/../data/unihan/cjk_ext_a.php' // 扩展A的生僻字
             ],
             'polyphone_rules' => __DIR__.'/../data/polyphone_rules.php',
             'frequency' => __DIR__.'/../data/char_frequency.php',
@@ -91,11 +92,12 @@ class PinyinConverter implements ConverterInterface {
      * @var array
      */
     private $dicts = [
+        'custom' => ['with_tone' => null, 'no_tone' => null],
         'common' => ['with_tone' => null, 'no_tone' => null],
         'rare' => ['with_tone' => null, 'no_tone' => null],
+        'unihan' => ['with_tone' => null, 'no_tone' => null],
         'self_learn' => ['with_tone' => null, 'no_tone' => null],
         'frequency' => null,
-        'custom' => ['with_tone' => null, 'no_tone' => null],
         'polyphone_rules' => null,
         'not_found' => null
     ];
@@ -359,22 +361,39 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
      * @param array $dictTypes 要加载的字典类型
      */
     private function loadDictsByType(bool $withTone, array $dictTypes) {
+    
         foreach ($dictTypes as $dictType) {
             switch ($dictType) {
                 case 'common':
-                    $this->loadCommonDict($withTone);
-                    break;
-                case 'self_learn':
-                    $this->loadSelfLearnDict($withTone);
+                    $this->loadDictToRam('common',$withTone);
                     break;
                 case 'rare':
-                    $this->loadRareDict($withTone);
+                    $this->loadDictToRam('rare',$withTone);
+                    break;
+                case 'unihan':
+                    $this->loadDictToRam('unihan',$withTone);
                     break;
                 case 'custom':
-                    $this->loadCustomDict($withTone);
+                    $this->loadDictToRam('custom',$withTone);
                     break;
             }
         }
+    }
+    /**
+     * 加载字典到内存
+     * @param string $dictType 字典类型 如 common, rare, unihan, custom
+     * @param bool $withTone 是否带声调
+     */
+    private function loadDictToRam($dictType, $withTone) {
+        $type = $withTone ? 'with_tone' : 'no_tone';
+        if ($this->dicts[$dictType][$type] !== null) {
+            return;
+        }
+        $path = $this->config['dict'][$dictType][$type];
+        // 注意这里加载的字典数据就是原始数据， 是格式化后的数据
+        $data = FileUtil::fileExists($path) ? FileUtil::requireFile($path) : [];
+
+        $this->dicts[$dictType][$type] = $data;
     }
     
     /**
@@ -428,7 +447,7 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
         }
         $path = $this->config['dict']['custom'][$type];
         $data = FileUtil::fileExists($path) ? FileUtil::requireFile($path) : [];
-        $this->dicts['custom'][$type] = is_array($data) ? $this->formatPinyinArray($data) : [];
+        $this->dicts['custom'][$type] = is_array($data) ? $data : [];
     }
 
     /**
@@ -920,7 +939,7 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
         $commonPath = $this->config['dict']['common'][$toneType];
         $commonData = FileUtil::requireFile($commonPath);
         $commonData = $this->formatPinyinArray($commonData);
-
+        
         $selfLearnData = $this->dicts['self_learn'][$toneType];
         $sortedChars = $this->sortSelfLearnByFrequency($selfLearnData, $toneType);
 
@@ -1229,11 +1248,10 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
     private function migrateLowFrequencyChars($toneType) {
         $commonPath = $this->config['dict']['common'][$toneType];
         $commonData = FileUtil::requireFile($commonPath);
-        $commonData = $this->formatPinyinArray($commonData);
+  
         
         $rarePath = $this->config['dict']['rare'][$toneType];
         $rareData = FileUtil::fileExists($rarePath) ? FileUtil::requireFile($rarePath) : [];
-        $rareData = $this->formatPinyinArray($rareData);
         
         // 计算常用字典中每个字符的平均频率
         $totalFrequency = 0;
@@ -1307,7 +1325,7 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
         }
         $path = $this->config['dict']['self_learn'][$type];
         $data = FileUtil::fileExists($path) ? FileUtil::requireFile($path) : [];
-        $this->dicts['self_learn'][$type] = is_array($data) ? $this->formatPinyinArray($data) : [];
+        $this->dicts['self_learn'][$type] = is_array($data) ? $data : [];
     }
 
     /**
@@ -1331,54 +1349,6 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
             $formatted[$char] = array_filter($pinyinArr) ?: [$char];
         }
         return $formatted;
-    }
-
-    /**
-     * 加载常用字字典
-     * @param bool $withTone 是否带声调
-     */
-    private function loadCommonDict($withTone) {
-        $type = $withTone ? 'with_tone' : 'no_tone';
-        if ($this->dicts['common'][$type] !== null) {
-            return;
-        }
-        $path = $this->config['dict']['common'][$type];
-        $rawData = FileUtil::fileExists($path) ? FileUtil::requireFile($path) : [];
-        $commonData = [];
-        foreach ($rawData as $key => $value) {
-            if (is_string($key)) {
-                $commonData[$key] = is_array($value) ? $value : [$value];
-            } elseif (is_numeric($key) && is_array($value) && count($value) >= 2) {
-                $char = $value[0];
-                $pinyin = $value[1];
-                $commonData[$char] = is_array($pinyin) ? $pinyin : [$pinyin];
-            }
-        }
-        $this->dicts['common'][$type] = $this->formatPinyinArray($commonData);
-    }
-
-    /**
-     * 加载生僻字字典
-     * @param bool $withTone 是否带声调
-     */
-    private function loadRareDict($withTone) {
-        $type = $withTone ? 'with_tone' : 'no_tone';
-        if ($this->dicts['rare'][$type] !== null) {
-            return;
-        }
-        $path = $this->config['dict']['rare'][$type];
-        $rawData = FileUtil::fileExists($path) ? FileUtil::requireFile($path) : [];
-        $rareData = [];
-        foreach ($rawData as $key => $value) {
-            if (is_string($key)) {
-                $rareData[$key] = is_array($value) ? $value : [$value];
-            } elseif (is_numeric($key) && is_array($value) && count($value) >= 2) {
-                $char = $value[0];
-                $pinyin = $value[1];
-                $rareData[$char] = is_array($pinyin) ? $pinyin : [$pinyin];
-            }
-        }
-        $this->dicts['rare'][$type] = $this->formatPinyinArray($rareData);
     }
 
     /**
@@ -1432,7 +1402,7 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
             return $this->cleanPinyin($pinyin, mb_strlen($char, 'UTF-8') === 1);
         }
         
-        // 其他字典（按照self_xxx, common_xxx, rare_xxx的顺序）
+        // 其他字典（按照common_xxx, rare_xxx的顺序）
         $pinyinArray = $this->getAllPinyinOptions($char, $withTone);
         $pinyin = $this->getFirstPinyin($pinyinArray);
 
@@ -1493,16 +1463,17 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
             }
         }
 
-        // 3. 常用字典
+        // 3. 常用字典 来自Unihan数据库的CJK基本汉字 20923个汉字 的前3500个汉字, 这个会在使用过程中通过后台任务根据调用频率动态调整
         if ($this->dicts['common'][$type] === null) {
-            $this->loadCommonDict($withTone);
+            $this->loadDictToRam('common',$withTone);
         }
         if (isset($this->dicts['common'][$type][$char])) {
             $pinyin = $this->dicts['common'][$type][$char];
             return $this->parsePinyinOptions($pinyin);
         }
 
-        // 4. 生僻字字典（并记录到自学习字典）- 懒加载
+        // 4. 自定义生僻字字典（并记录到自学习字典）- 懒加载  注意这里的生僻字典是来自Unihan数据库的CJK基本汉字 20923个汉字
+        // 这个字典在使用过程中也是通过后台任务根据调用频率动态调整 有可能会加入其他的生僻字 如一些历史字 罕见字 等
         if ($this->dicts['rare'][$type] === null) {
             $this->lazyLoadDict('rare', $withTone);
         }
@@ -1513,9 +1484,18 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
             return $this->parsePinyinOptions($rawPinyin);
         }
 
-        // 5. 自学习字典（仅在后台合并任务后使用，避免重复查询）
-        // 注意：自学习字典的数据来源于生僻字字典，在未合并之前是重复的
-        // 因此这里不需要查询自学习字典，避免重复加载
+        // 5. unihan字典 这个字典的规则同 4自定义生僻字字典, 不同的是这个字典里面的数据来源unicode官方,使用过程不会做调整
+        // 但是会将这里的字记录到自学习字典里面 然后通过后台任务动态调整到常用或者4的字典中
+        if ($this->dicts['unihan'][$type] === null) {
+            $this->lazyLoadDict('unihan', $withTone);
+        }
+        if (isset($this->dicts['unihan'][$type][$char])) {
+            $rawPinyin = $this->dicts['unihan'][$type][$char];
+            // 记录生僻字到自学习字典（但不立即加载自学习字典）
+            $this->migrateRareToSelfLearn($char, $rawPinyin, $withTone);
+            return $this->parsePinyinOptions($rawPinyin);
+        }
+        
 
         // 6. 基础映射表（作为最后的兜底）
         if (isset($this->basicPinyinMap[$char])) {
@@ -1548,7 +1528,7 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
 
         // 常用字典
         if ($this->dicts['common'][$type] === null) {
-            $this->loadCommonDict($withTone);
+            $this->loadDictToRam('common',$withTone);
         }
         if (isset($this->dicts['common'][$type][$char])) {
             $options = array_merge($options, $this->parsePinyinOptions($this->dicts['common'][$type][$char]));
@@ -1762,7 +1742,6 @@ return $rulePinyin;
         // 加载常用字典
         $commonPath = $this->config['dict']['common'][$type];
         $commonData = FileUtil::requireFile($commonPath);
-        $commonData = $this->formatPinyinArray($commonData);
         
         // 如果常用字典中还没有这个字，就添加进去
         if (!isset($commonData[$char])) {
@@ -1893,7 +1872,6 @@ return $rulePinyin;
             }
             $path = $this->config['dict']['self_learn'][$type];
             $existing = FileUtil::requireFile($path);
-            $existing = $this->formatPinyinArray($existing);
             $merged = array_merge($existing, $this->learnedChars[$type]);
             FileUtil::writeFile($path, "<?php\nreturn " . PinyinHelper::compactArrayExport($merged) . ";\n");
             $this->dicts['self_learn'][$type] = $merged;
