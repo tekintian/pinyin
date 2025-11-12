@@ -80,17 +80,24 @@ class PinyinHelper
 
     /**
      * 标准化拼音格式
-     * 
-     * @param string $pinyin 原始拼音
+     * @param string $pinyin 拼音
+     * @param bool $withTone 是否带声调
      * @return string 标准化后的拼音
      */
-    public static function normalizePinyinFormat($pinyin)
-    {
+    public static function normalizePinyinFormat($pinyin, $withTone) {
         $pinyin = trim($pinyin);
         
-        // 移除多余的空格
-        $pinyin = preg_replace('/\s+/', ' ', $pinyin);
+        // 移除非法字符
+        $pinyin = preg_replace('/[^a-zāáǎàōóǒòēéěèīíǐìūúǔùüǖǘǚǜ\s]/iu', '', $pinyin);
         
+        // 处理声调
+        if (!$withTone) {
+            $pinyin = self::removeTone($pinyin);
+        }
+        
+        // 标准化空格（多个空格合并为一个）
+        $pinyin = preg_replace('/\s+/', ' ', $pinyin);
+
         // 统一大小写（小写）
         $pinyin = mb_strtolower($pinyin);
         
@@ -120,7 +127,7 @@ class PinyinHelper
      * @param bool $removeAll 是否移除所有空格
      * @return string 处理后的拼音
      */
-    private static function processSpaces($pinyin, $removeAll = false)
+    public static function processSpaces($pinyin, $removeAll = false)
     {
         if ($removeAll) {
             return str_replace(' ', '', $pinyin);
@@ -147,58 +154,33 @@ class PinyinHelper
         
         return '';
     }
-
     /**
-     * 解析拼音选项字符串为数组
-     * 
-     * @param string|array $pinyin 拼音字符串或数组
+     * 解析拼音选项
+     * @param mixed $pinyin 拼音数据
      * @return array 拼音选项数组
      */
-    public static function parsePinyinOptions($pinyin)
-    {
+    public static function parsePinyinOptions($pinyin) {
         if (is_array($pinyin)) {
             // 如果已经是数组，处理每个元素
             $result = [];
             foreach ($pinyin as $item) {
-                if (is_string($item)) {
-                    $result = array_merge($result, self::parseSinglePinyinOption($item));
+                if (is_string($item) && str_contains($item, ' ')) {
+                    // 如果数组元素包含空格分隔的拼音，拆分它们
+                    $result = array_merge($result, explode(' ', $item));
+                } else {
+                    $result[] = $item;
                 }
             }
-            return array_unique($result);
+            return array_unique(array_filter($result));
         }
         
-        return self::parseSinglePinyinOption($pinyin);
-    }
-
-    /**
-     * 解析单个拼音选项字符串
-     * 
-     * @param string $pinyin 拼音字符串
-     * @return array 拼音数组
-     */
-    private static function parseSinglePinyinOption($pinyin)
-    {
-        $pinyin = trim($pinyin);
-        
-        // 处理多种分隔符：逗号、斜杠、空格等
-        $patterns = [
-            '/[,，]/u',     // 中文和英文逗号
-            '/[\\/]/',      // 斜杠
-            '/\s+/',        // 多个空格
-        ];
-        
-        foreach ($patterns as $pattern) {
-            if (preg_match($pattern, $pinyin)) {
-                return array_filter(
-                    preg_split($pattern, $pinyin),
-                    function($item) { return !empty(trim($item)); }
-                );
-            }
+        if (is_string($pinyin)) {
+            // 如果是字符串，按空格拆分
+            return array_unique(array_filter(explode(' ', $pinyin)));
         }
         
         return [$pinyin];
     }
-
     /**
      * 检查拼音格式一致性
      * 
@@ -218,10 +200,10 @@ class PinyinHelper
             return $result;
         }
         
-        $firstPinyin = self::normalizePinyinFormat($pinyinArray[0]);
+        $firstPinyin = self::normalizePinyinFormat($pinyinArray[0], $withTone);
         
         foreach ($pinyinArray as $index => $pinyin) {
-            $normalized = self::normalizePinyinFormat($pinyin);
+            $normalized = self::normalizePinyinFormat($pinyin, $withTone);
             
             if ($normalized !== $firstPinyin) {
                 $result['consistent'] = false;
@@ -241,25 +223,29 @@ class PinyinHelper
         return $result;
     }
 
-    /**
-     * 格式化拼音数组为统一格式
-     * 
+     /**
+     * 格式化拼音数组（区分单字和多字空格）
      * @param array $data 原始数据
      * @return array 格式化后的数据
      */
-    public static function formatPinyinArray($data)
-    {
+    public static function formatPinyinArray($data) {
         $formatted = [];
         foreach ($data as $char => $pinyin) {
-            if (is_array($pinyin)) {
-                $formatted[$char] = $pinyin;
-            } else {
-                $formatted[$char] = self::parsePinyinOptions($pinyin);
-            }
+            if (empty($char)) continue;
+            $wordLen = mb_strlen($char, 'UTF-8');
+            $pinyinArr = is_array($pinyin) ? $pinyin : [$pinyin];
+            
+            $pinyinArr = array_map(function($item) use ($wordLen) {
+                $trimmed = trim($item);
+                // 对于单字，完全去除空格
+                return self::processSpaces($trimmed, $wordLen === 1);
+            }, $pinyinArr);
+            
+            $formatted[$char] = array_filter($pinyinArr) ?: [$char];
         }
         return $formatted;
     }
-
+    
     /**
      * 紧凑数组序列化（统一实现，用于字典文件）
      * 

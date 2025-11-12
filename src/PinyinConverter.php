@@ -55,7 +55,6 @@ class PinyinConverter implements ConverterInterface {
             'delete_allow' => PinyinConstants::DEFAULT_SPECIAL_CHARS_ALLOWED
         ],
         'high_freq_cache' => ['size' => 1000],
-        'polyphone_priority' => ['行' => 0, '长' => 0, '乐' => 0],
         'self_learn_merge' => [
             'threshold' => 1000,
             'batch_threshold' => 50, // 批量处理阈值
@@ -477,7 +476,7 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
         $pinyinArray = is_array($pinyin) ? $pinyin : [$pinyin];
         $pinyinArray = array_map(function($item) use ($wordLen) {
             $clean = preg_replace('/[^\p{L}\p{M} ]/u', '', $item);
-            return trim($this->processSpaces($clean, $wordLen === 1));
+            return trim(PinyinHelper::processSpaces($clean, $wordLen === 1));
         }, $pinyinArray);
 
         $pinyinArray = array_filter($pinyinArray);
@@ -714,7 +713,7 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
             if ($hasSpace !== $firstHasSpace) {
                 $result['consistent'] = false;
                 $result['suggestions'] = array_map(function($p) use ($withTone) {
-                    return $this->normalizePinyinFormat($p, $withTone);
+                    return PinyinHelper::normalizePinyinFormat($p, $withTone);
                 }, $pinyinArray);
                 break;
             }
@@ -751,7 +750,7 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
         // 修复每个拼音
         $fixedPinyinArray = [];
         foreach ($pinyinArray as $pinyin) {
-            $fixedPinyin = $this->normalizePinyinFormat($pinyin, $withTone);
+            $fixedPinyin = PinyinHelper::normalizePinyinFormat($pinyin, $withTone);
             if (!empty(trim($fixedPinyin))) {
                 $fixedPinyinArray[] = $fixedPinyin;
             }
@@ -770,30 +769,6 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
         
         return $result;
     }
-    
-    /**
-     * 标准化拼音格式
-     * @param string $pinyin 拼音
-     * @param bool $withTone 是否带声调
-     * @return string 标准化后的拼音
-     */
-    private function normalizePinyinFormat($pinyin, $withTone) {
-        $pinyin = trim($pinyin);
-        
-        // 移除非法字符
-        $pinyin = preg_replace('/[^a-zāáǎàōóǒòēéěèīíǐìūúǔùüǖǘǚǜ\s]/iu', '', $pinyin);
-        
-        // 处理声调
-        if (!$withTone) {
-            $pinyin = $this->removeTone($pinyin);
-        }
-        
-        // 标准化空格（多个空格合并为一个）
-        $pinyin = preg_replace('/\s+/', ' ', $pinyin);
-        
-        return $pinyin;
-    }
-
     /**
      * 加载字词频率数据
      */
@@ -938,7 +913,7 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
 
         $commonPath = $this->config['dict']['common'][$toneType];
         $commonData = FileUtil::requireFile($commonPath);
-        $commonData = $this->formatPinyinArray($commonData);
+        $commonData = PinyinHelper::formatPinyinArray($commonData);
         
         $selfLearnData = $this->dicts['self_learn'][$toneType];
         $sortedChars = $this->sortSelfLearnByFrequency($selfLearnData, $toneType);
@@ -976,7 +951,7 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
         // 检查目标字典中是否已存在该字符
         $targetCommonPath = $this->config['dict']['common'][$targetToneType];
         $targetCommonData = FileUtil::requireFile($targetCommonPath);
-        $targetCommonData = $this->formatPinyinArray($targetCommonData);
+        $targetCommonData = PinyinHelper::formatPinyinArray($targetCommonData);
         
         if (isset($targetCommonData[$char])) {
             return; // 目标字典中已存在，无需同步
@@ -1015,7 +990,7 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
             foreach ($this->dicts['common']['with_tone'] as $commonChar => $pinyinArray) {
                 if ($commonChar === $char) {
                     foreach ($pinyinArray as $pinyin) {
-                        $noToneVersion = $this->removeTone($pinyin);
+                        $noToneVersion = PinyinHelper::removeTone($pinyin);
                         if ($noToneVersion === $noTonePinyin) {
                             return $pinyin; // 找到匹配的带声调拼音
                         }
@@ -1029,7 +1004,7 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
             foreach ($this->dicts['rare']['with_tone'] as $rareChar => $pinyinArray) {
                 if ($rareChar === $char) {
                     foreach ($pinyinArray as $pinyin) {
-                        $noToneVersion = $this->removeTone($pinyin);
+                        $noToneVersion = PinyinHelper::removeTone($pinyin);
                         if ($noToneVersion === $noTonePinyin) {
                             return $pinyin;
                         }
@@ -1041,7 +1016,7 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
         // 3. 尝试从Unihan字典查询（如果可用）
         $unihanPinyin = $this->queryUnihanForPinyin($char);
         if ($unihanPinyin) {
-            $noToneVersion = $this->removeTone($unihanPinyin);
+            $noToneVersion = PinyinHelper::removeTone($unihanPinyin);
             if ($noToneVersion === $noTonePinyin) {
                 return $unihanPinyin;
             }
@@ -1107,7 +1082,7 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
         
         if (isset($commonToneRules[$char])) {
             foreach ($commonToneRules[$char] as $withTonePinyin) {
-                if ($this->removeTone($withTonePinyin) === $noTonePinyin) {
+                if (PinyinHelper::removeTone($withTonePinyin) === $noTonePinyin) {
                     return $withTonePinyin;
                 }
             }
@@ -1163,7 +1138,7 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
         foreach ($sourcePinyin as $pinyin) {
             if ($sourceToneType === 'with_tone' && $targetToneType === 'no_tone') {
                 // 带声调转无声调：去除声调符号（简单可靠）
-                $convertedPinyin[] = $this->removeTone($pinyin);
+                $convertedPinyin[] = PinyinHelper::removeTone($pinyin);
             } else if ($sourceToneType === 'no_tone' && $targetToneType === 'with_tone') {
                 // 无声调转带声调：需要复杂的查找逻辑
                 $withTonePinyin = $this->findPinyinWithTone($char, $pinyin);
@@ -1329,29 +1304,6 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
     }
 
     /**
-     * 格式化拼音数组（区分单字和多字空格）
-     * @param array $data 原始数据
-     * @return array 格式化后的数据
-     */
-    private function formatPinyinArray($data) {
-        $formatted = [];
-        foreach ($data as $char => $pinyin) {
-            if (empty($char)) continue;
-            $wordLen = mb_strlen($char, 'UTF-8');
-            $pinyinArr = is_array($pinyin) ? $pinyin : [$pinyin];
-            
-            $pinyinArr = array_map(function($item) use ($wordLen) {
-                $trimmed = trim($item);
-                // 对于单字，完全去除空格
-                return $this->processSpaces($trimmed, $wordLen === 1);
-            }, $pinyinArr);
-            
-            $formatted[$char] = array_filter($pinyinArr) ?: [$char];
-        }
-        return $formatted;
-    }
-
-    /**
      * 获取单个汉字的拼音（单字去空格，多字保留）
      * @param string $char 汉字
      * @param bool $withTone 是否带声调
@@ -1371,7 +1323,7 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
 
         // 临时映射（单字处理）- 最高优先级
         if (isset($tempMap[$char])) {
-            return $this->cleanPinyin($tempMap[$char], true);
+            return PinyinHelper::cleanPinyin($tempMap[$char], true);
         }
 
         // 多音字规则检查 - 第二优先级（基于上下文的智能选择）
@@ -1385,10 +1337,10 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
             if ($matchedPinyin !== null) {
                 // 根据withTone参数决定是否去除声调
                 if (!$withTone && preg_match('/[āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜü]/u', $matchedPinyin)) {
-                    $matchedPinyin = $this->removeTone($matchedPinyin);
+                    $matchedPinyin = PinyinHelper::removeTone($matchedPinyin);
                 }
                 
-                return $this->cleanPinyin($matchedPinyin, true);
+                return PinyinHelper::cleanPinyin($matchedPinyin, true);
             }
         }
 
@@ -1398,21 +1350,21 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
         }
         
         if (isset($this->dicts['custom'][$type][$char])) {
-            $pinyin = $this->getFirstPinyin($this->dicts['custom'][$type][$char]);
-            return $this->cleanPinyin($pinyin, mb_strlen($char, 'UTF-8') === 1);
+            $pinyin = PinyinHelper::getFirstPinyin($this->dicts['custom'][$type][$char]);
+            return PinyinHelper::cleanPinyin($pinyin, mb_strlen($char, 'UTF-8') === 1);
         }
         
         // 其他字典（按照common_xxx, rare_xxx的顺序）
         $pinyinArray = $this->getAllPinyinOptions($char, $withTone);
-        $pinyin = $this->getFirstPinyin($pinyinArray);
+        $pinyin = PinyinHelper::getFirstPinyin($pinyinArray);
 
         // 根据withTone参数决定是否去除声调
         if (!$withTone && preg_match('/[āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜü]/u', $pinyin)) {
-            $pinyin = $this->removeTone($pinyin);
+            $pinyin = PinyinHelper::removeTone($pinyin);
         }
         
         // 修复：如果没有找到拼音，返回汉字本身
-        $result = !empty(trim($pinyin)) ? $this->cleanPinyin($pinyin, true) : $char;
+        $result = !empty(trim($pinyin)) ? PinyinHelper::cleanPinyin($pinyin, true) : $char;
         
         // 更新字符使用频率（仅在成功获取拼音时）
         if ($result !== $char && preg_match('/^[a-zāáǎàōóǒòēéěèīíǐìūúǔùüǖǘǚǜ]+$/i', $result)) {
@@ -1422,18 +1374,6 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
         return $result;
     }
     
-    /**
-     * 清理拼音字符串，去除多余空格
-     * @param string $pinyin 拼音字符串
-     * @param bool $removeAllSpaces 是否移除所有空格（单字时为true，多字时为false）
-     * @return string 清理后的拼音字符串
-     */
-    private function cleanPinyin($pinyin, $removeAllSpaces = false) {
-        if ($removeAllSpaces) {
-            return $this->processSpaces($pinyin, true);
-        }
-        return $pinyin;
-    }
     /**
      * 获取所有可能的拼音选项
      * @param string $char 汉字
@@ -1449,7 +1389,7 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
         }
         if (isset($this->dicts['custom'][$type][$char])) {
             $pinyin = $this->dicts['custom'][$type][$char];
-            return $this->parsePinyinOptions($pinyin);
+            return PinyinHelper::parsePinyinOptions($pinyin);
         }
 
         // 2. 多音字规则检查
@@ -1469,7 +1409,7 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
         }
         if (isset($this->dicts['common'][$type][$char])) {
             $pinyin = $this->dicts['common'][$type][$char];
-            return $this->parsePinyinOptions($pinyin);
+            return PinyinHelper::parsePinyinOptions($pinyin);
         }
 
         // 4. 自定义生僻字字典（并记录到自学习字典）- 懒加载  注意这里的生僻字典是来自Unihan数据库的CJK基本汉字 20923个汉字
@@ -1481,7 +1421,7 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
             $rawPinyin = $this->dicts['rare'][$type][$char];
             // 记录生僻字到自学习字典（但不立即加载自学习字典）
             $this->migrateRareToSelfLearn($char, $rawPinyin, $withTone, 'rare');
-            return $this->parsePinyinOptions($rawPinyin);
+            return PinyinHelper::parsePinyinOptions($rawPinyin);
         }
 
         // 5. unihan字典 这个字典的规则同 4自定义生僻字字典, 不同的是这个字典里面的数据来源unicode官方,使用过程不会做调整
@@ -1493,7 +1433,7 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
             $rawPinyin = $this->dicts['unihan'][$type][$char];
             // 记录生僻字到自学习字典（但不立即加载自学习字典）
             $this->migrateRareToSelfLearn($char, $rawPinyin, $withTone, 'unihan');
-            return $this->parsePinyinOptions($rawPinyin);
+            return PinyinHelper::parsePinyinOptions($rawPinyin);
         }
         // 6. 基础映射表（作为最后的兜底）
         if (isset($this->basicPinyinMap[$char])) {
@@ -1521,7 +1461,7 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
             $this->loadSelfLearnDict($withTone);
         }
         if (isset($this->dicts['self_learn'][$type][$char])) {
-            $options = array_merge($options, $this->parsePinyinOptions($this->dicts['self_learn'][$type][$char]));
+            $options = array_merge($options, PinyinHelper::parsePinyinOptions($this->dicts['self_learn'][$type][$char]));
         }
 
         // 常用字典
@@ -1529,7 +1469,7 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
             $this->loadDictToRam('common',$withTone);
         }
         if (isset($this->dicts['common'][$type][$char])) {
-            $options = array_merge($options, $this->parsePinyinOptions($this->dicts['common'][$type][$char]));
+            $options = array_merge($options, PinyinHelper::parsePinyinOptions($this->dicts['common'][$type][$char]));
         }
 
         // 生僻字字典
@@ -1537,7 +1477,7 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
             $this->lazyLoadDict('rare', $withTone);
         }
         if (isset($this->dicts['rare'][$type][$char])) {
-            $options = array_merge($options, $this->parsePinyinOptions($this->dicts['rare'][$type][$char]));
+            $options = array_merge($options, PinyinHelper::parsePinyinOptions($this->dicts['rare'][$type][$char]));
         }
 
         // 基础映射表
@@ -1546,34 +1486,6 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
         }
 
         return array_unique($options);
-    }
-
-    /**
-     * 解析拼音选项
-     * @param mixed $pinyin 拼音数据
-     * @return array 拼音选项数组
-     */
-    private function parsePinyinOptions($pinyin) {
-        if (is_array($pinyin)) {
-            // 如果已经是数组，处理每个元素
-            $result = [];
-            foreach ($pinyin as $item) {
-                if (is_string($item) && str_contains($item, ' ')) {
-                    // 如果数组元素包含空格分隔的拼音，拆分它们
-                    $result = array_merge($result, explode(' ', $item));
-                } else {
-                    $result[] = $item;
-                }
-            }
-            return array_unique(array_filter($result));
-        }
-        
-        if (is_string($pinyin)) {
-            // 如果是字符串，按空格拆分
-            return array_unique(array_filter(explode(' ', $pinyin)));
-        }
-        
-        return [$pinyin];
     }
 
     /**
@@ -1604,7 +1516,7 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
             }
             
             // 修复：当不需要声调时，先移除规则拼音中的声调再进行匹配
-            $checkPinyin = $withTone ? $rulePinyin : $this->removeTone($rulePinyin);
+            $checkPinyin = $withTone ? $rulePinyin : PinyinHelper::removeTone($rulePinyin);
             if (!in_array($checkPinyin, $pinyinArray)) {
                 continue;
             }
@@ -1616,38 +1528,12 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
                 return $rulePinyin;
             }
             if ($ruleType === 'pre' && $prevChar === $target) {
-return $rulePinyin;
+                return $rulePinyin;
             }
         }
     
         return null;
     }
-
-    /**
-     * 自动学习生僻字
-     * @param string $char 汉字
-     * @param array|string $rawPinyin 拼音
-     * @param bool $withTone 是否带声调
-     */
-    private function learnChar($char, $rawPinyin, $withTone) {
-        $type = $withTone ? 'with_tone' : 'no_tone';
-        if (isset($this->dicts['self_learn'][$type][$char]) || isset($this->learnedChars[$type][$char])) {
-            return;
-        }
-
-        $pinyinArray = is_array($rawPinyin) ? $rawPinyin : [$rawPinyin];
-        if (!$withTone) {
-            $pinyinArray = array_map([$this, 'removeTone'], $pinyinArray);
-        }
-
-        $this->learnedChars[$type][$char] = $pinyinArray;
-        $this->dicts['self_learn'][$type][$char] = $pinyinArray;
-        $this->charFrequency[$type][$char] = 0;
-        
-        // 记录自学习来源：从生僻字字典学习
-        $this->logSelfLearnSource($char, 'rare', $type);
-    }
-    
     /**
      * 记录自学习字典的数据来源
      * @param string $char 汉字
@@ -1880,20 +1766,6 @@ return $rulePinyin;
     }
 
     /**
-     * 获取拼音数组中的第一个有效拼音
-     * @param array $pinyinArray 拼音数组
-     * @return string 第一个拼音
-     */
-    private function getFirstPinyin($pinyinArray) {
-        foreach ($pinyinArray as $pinyin) {
-            if (!empty(trim($pinyin))) {
-                return trim($pinyin);
-            }
-        }
-        return '';
-    }
-
-    /**
      * 移除拼音中的声调
      * @param string $pinyin 带声调拼音
      * @return string 无声调拼音
@@ -1994,7 +1866,7 @@ return $rulePinyin;
             
             // 检查文本中是否包含该词语
             if (strpos($result, $word) !== false) {
-                $pinyin = $this->getFirstPinyin($item['pinyin']);
+                $pinyin = PinyinHelper::getFirstPinyin($item['pinyin']);
                 // 将拼音中的空格替换为实际分隔符
                 $processedPinyin = str_replace(' ', $separator, $pinyin);
                 // 使用特殊标记来保护拼音字符串不被后续处理拆分

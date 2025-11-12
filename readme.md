@@ -9,7 +9,7 @@
 
 字典优先级从高到低依次为 custom_xxx   polyphone_xxx  ,  self_xxx,   common_xxx, rare_xxx
 
-优先级顺序是: custom_xxx > polyphone_xxx > self_xxx > common_xxx > rare_xxx ，
+优先级顺序是: custom_xxx > polyphone_xxx > common_xxx > rare_xxx > unihan(默认CJK扩展A区: 5786 个字符) ，
 
 
 ✅ 生僻字会自动加入自学习字典
@@ -21,18 +21,30 @@
 
 
 
-unicode汉字拼音数据查询  拼音位于 kMandarin 字段
+unicode汉字拼音数据查询  以 kMandarin 字段为主 囊括其他所有字段
 https://www.unicode.org/cgi-bin/GetUnihanData.pl?codepoint=%E8%AF%B4
 
+'kMandarin'  // 普通话拼音  最高优先级字段  如果这个字段没有拼音,这自动获取下面5种拼音集合
+'kHanyuPinyin',   // 汉语拼音
+'kXHC1983',       // 现代汉语词典
+'kTGHZ2013',      // 通用规范汉字字典
+'kHanyuPinlu',    // 汉语拼音频率
+'kSMSZD2003Readings' // 商务印书社字典
+
+
+
+
 各区块统计:
-CJK基本汉字: 20924 个字符
-CJK扩展A区: 5786 个字符
-CJK扩展B区: 14614 个字符
-CJK扩展C区: 506 个字符
-CJK扩展D区: 73 个字符
-CJK扩展E区: 870 个字符
-CJK扩展F区: 121 个字符
-CJK扩展G区: 1123 个字符
+CJK基本汉字: 20924 个字符  data/unihan/cjk_basic.php
+CJK扩展A区: 5786 个字符   data/unihan/cjk_ext_a.php
+CJK扩展B区: 14614 个字符  data/unihan/cjk_ext_b.php
+CJK扩展C区: 506 个字符   data/unihan/cjk_ext_c.php
+CJK扩展D区: 73 个字符  data/unihan/cjk_ext_d.php
+CJK扩展E区: 870 个字符  data/unihan/cjk_ext_e.php
+CJK扩展F区: 121 个字符  data/unihan/cjk_ext_f.php
+CJK扩展G区: 1123 个字符   data/unihan/cjk_ext_g.php
+
+
 
 
 ## 功能特点
