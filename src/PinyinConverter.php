@@ -235,7 +235,7 @@ class PinyinConverter implements ConverterInterface {
             FileUtil::createDir($backupDir);
         }
 
-foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
+        foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
             foreach (['with_tone', 'no_tone'] as $toneType) {
                 $path = $this->config['dict'][$dictType][$toneType];
                 if (!FileUtil::fileExists($path)) {
@@ -2500,9 +2500,10 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
 
     /**
      * 获取拼音统计信息
-     * @return array 统计信息
+     * @param bool $retJson 是否返回json格式
+     * @return string|array 统计信息
      */
-    public function getStatistics(): array
+    public function getStatistics($retJson=false):string|array
     {
         $stats = [
             'dictionaries' => [],
@@ -2527,7 +2528,7 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
             }
         }
 
-        return $stats;
+        return $retJson?json_encode($stats):$stats;
     }
 
     /**
@@ -2588,6 +2589,13 @@ foreach (['common', 'rare', 'self_learn', 'custom'] as $dictType) {
      */
     public function getUrlSlug($text, $separator = '-') {
         $separator = $separator ?: '-';
+
+        // 这里直接使用系统环境变量 ENABLE_CHINESE_TO_ARABIC 判断是否启用中文数字转阿拉伯数字功能，默认启用
+        $enableChineseToArabic = getenv('ENABLE_CHINESE_TO_ARABIC') ?? true;
+        if ($enableChineseToArabic) {
+            // 中文数字转阿拉伯数字
+            $text = PinyinHelper::chineseNumberToArabic($text);
+        }
         
         // 对于包含特殊字符的文本，先预处理特殊字符 ，将所有非字母、数字、空格的字符替换为分隔符
         // \p{L} 匹配 所有语言的字母（包括中文、日文、俄文等 Unicode 字母）
