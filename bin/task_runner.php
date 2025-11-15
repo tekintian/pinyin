@@ -406,7 +406,7 @@ class TaskRunner {
      * - SIGUSR2: 配置重载
      * 
      * 信号处理说明：
-     * - 使用静态变量保存实例引用，确保信号处理函数能正确访问实例方法
+     * - 使用全局变量保存PID文件路径，确保信号处理函数能正确访问
      * - 每个信号处理函数都包含错误检查和回退机制
      * - 支持方法存在性检查，提高代码健壮性
      * 
@@ -414,14 +414,12 @@ class TaskRunner {
      * @return void
      */
     private function setupSignalHandlers($pidFile) {
-        // 使用静态变量保存实例引用，确保信号处理函数能正确访问
-        static $self = null;
-        if ($self === null) {
-            $self = $this;
-        }
+        // 使用全局变量保存PID文件路径，确保信号处理函数能正确访问
+        $GLOBALS['_task_runner_pid_file'] = $pidFile;
         
         // 终止信号 (SIGTERM) - 系统管理员发送的终止信号
-        pcntl_signal(SIGTERM, function() use ($pidFile) {
+        pcntl_signal(SIGTERM, function() {
+            $pidFile = $GLOBALS['_task_runner_pid_file'] ?? '/tmp/pinyin_task_daemon.pid';
             echo "[" . date('Y-m-d H:i:s') . "] 收到终止信号，退出守护进程\n";
             
             // 直接清理并退出，避免复杂的实例方法调用
@@ -432,7 +430,8 @@ class TaskRunner {
         });
         
         // 中断信号 (SIGINT) - 用户按Ctrl+C发送的中断信号
-        pcntl_signal(SIGINT, function() use ($pidFile) {
+        pcntl_signal(SIGINT, function() {
+            $pidFile = $GLOBALS['_task_runner_pid_file'] ?? '/tmp/pinyin_task_daemon.pid';
             echo "[" . date('Y-m-d H:i:s') . "] 收到中断信号，退出守护进程\n";
             
             if (file_exists($pidFile)) {
@@ -450,65 +449,48 @@ class TaskRunner {
         });
         
         // 挂起信号 (SIGHUP) - 优雅重启和配置重载
-        pcntl_signal(SIGHUP, function() use ($self, $pidFile) {
+        pcntl_signal(SIGHUP, function() {
+            $pidFile = $GLOBALS['_task_runner_pid_file'] ?? '/tmp/pinyin_task_daemon.pid';
             echo "[" . date('Y-m-d H:i:s') . "] 收到挂起信号，执行优雅重启\n";
             
-            // 保存当前状态
-            if (method_exists($self, 'saveCurrentState')) {
-                $self->saveCurrentState();
+            // 直接重启，不调用复杂的实例方法
+            if (file_exists($pidFile)) {
+                unlink($pidFile);
             }
             
-            // 显示重启前的统计信息
-            if (method_exists($self, 'showStats')) {
-                $self->showStats();
-            }
+            // 等待1秒确保清理完成
+            sleep(1);
             
-            echo "[" . date('Y-m-d H:i:s') . "] 优雅重启中...\n";
+            // 重新执行当前脚本
+            $script = __FILE__;
+            $args = $_SERVER['argv'] ?? [];
+            pcntl_exec(PHP_BINARY, array_merge([$script], $args));
             
-            // 重新启动守护进程
-            if (method_exists($self, 'restartDaemon')) {
-                $self->restartDaemon($pidFile);
-            } else {
-                // 如果方法不存在，直接退出
-                if (file_exists($pidFile)) {
-                    unlink($pidFile);
-                }
-                exit(0);
-            }
+            // 如果pcntl_exec失败，直接退出
+            exit(0);
         });
         
         // 用户自定义信号1 (SIGUSR1) - 优雅重启
-        pcntl_signal(SIGUSR1, function() use ($self, $pidFile) {
+        pcntl_signal(SIGUSR1, function() {
+            $pidFile = $GLOBALS['_task_runner_pid_file'] ?? '/tmp/pinyin_task_daemon.pid';
             echo "[" . date('Y-m-d H:i:s') . "] 收到用户信号，执行优雅重启\n";
             
-            if (method_exists($self, 'saveCurrentState')) {
-                $self->saveCurrentState();
+            if (file_exists($pidFile)) {
+                unlink($pidFile);
             }
             
-            if (method_exists($self, 'showStats')) {
-                $self->showStats();
-            }
+            sleep(1);
             
-            if (method_exists($self, 'restartDaemon')) {
-                $self->restartDaemon($pidFile);
-            } else {
-                if (file_exists($pidFile)) {
-                    unlink($pidFile);
-                }
-                exit(0);
-            }
+            $script = __FILE__;
+            $args = $_SERVER['argv'] ?? [];
+            pcntl_exec(PHP_BINARY, array_merge([$script], $args));
+            exit(0);
         });
         
         // 用户自定义信号2 (SIGUSR2) - 重新加载配置
-        pcntl_signal(SIGUSR2, function() use ($self) {
+        pcntl_signal(SIGUSR2, function() {
             echo "[" . date('Y-m-d H:i:s') . "] 收到用户信号2，重新加载配置\n";
-            
-            if (method_exists($self, 'reloadConfiguration')) {
-                $self->reloadConfiguration();
-                echo "[" . date('Y-m-d H:i:s') . "] 配置已重新加载\n";
-            } else {
-                echo "[" . date('Y-m-d H:i:s') . "] 配置重载功能不可用\n";
-            }
+            echo "[" . date('Y-m-d H:i:s') . "] 配置重载功能暂不可用\n";
         });
     }
     
