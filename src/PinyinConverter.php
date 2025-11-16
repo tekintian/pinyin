@@ -571,7 +571,8 @@ class PinyinConverter implements ConverterInterface {
         $path = $this->config['dict']['custom'][$type];
         FileUtil::writeFile($path, "<?php\nreturn " . PinyinHelper::compactArrayExport($this->dicts['custom'][$type]) . ";\n");
         $this->initCustomMultiWords();
-        echo "\n✅ 已添加自定义拼音：{$char} → " . implode('/', $pinyinArray); // 注释掉Web环境中的输出
+        // 注释掉Web环境中的输出，避免影响HTTP响应
+        // echo "\n✅ 已添加自定义拼音：{$char} → " . implode('/', $pinyinArray);
     }
 
     /**
