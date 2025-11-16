@@ -221,6 +221,46 @@ class TaskRunner {
     }
     
     /**
+     * 执行字典合并任务
+     * 
+     * 集成原src/merge_pinyin_dict.php的功能，用于合并拼音字典
+     * 在守护进程模式下，每天凌晨2点自动执行
+     * 在批量处理和一次性执行模式下，每次启动时执行
+     * 
+     * @return array 合并结果
+     */
+    private function runDictionaryMerge() {
+        echo "[" . date('Y-m-d H:i:s') . "] 开始执行字典合并任务...\n";
+        
+        try {
+            // 调用拼音转换器的字典合并方法
+            $result = $this->converter->executeMerge();
+            
+            if ($result['success']) {
+                echo "[" . date('Y-m-d H:i:s') . "] 字典合并成功: " . $result['message'] . "\n";
+                echo "[" . date('Y-m-d H:i:s') . "] 合并统计: " . 
+                     "新增: " . ($result['added'] ?? 0) . ", " .
+                     "更新: " . ($result['updated'] ?? 0) . ", " .
+                     "总计: " . ($result['total'] ?? 0) . "\n";
+            } else {
+                echo "[" . date('Y-m-d H:i:s') . "] 字典合并失败: " . $result['message'] . "\n";
+            }
+            
+            return $result;
+            
+        } catch (\Exception $e) {
+            echo "[" . date('Y-m-d H:i:s') . "] 字典合并异常: " . $e->getMessage() . "\n";
+            return [
+                'success' => false,
+                'message' => '字典合并异常: ' . $e->getMessage(),
+                'added' => 0,
+                'updated' => 0,
+                'total' => 0
+            ];
+        }
+    }
+    
+    /**
      * 批量处理模式
      */
     private function runBatch() {
@@ -228,6 +268,9 @@ class TaskRunner {
         $limit = $this->getOption('limit', 'l', 0);
         
         echo "开始批量处理任务...\n";
+        
+        // 首先执行字典合并任务
+        $this->runDictionaryMerge();
         
         $processed = 0;
         do {
@@ -259,6 +302,9 @@ class TaskRunner {
         $batchSize = $this->getOption('batch-size', 'b', 10);
         
         echo "执行一次性任务处理...\n";
+        
+        // 首先执行字典合并任务
+        $this->runDictionaryMerge();
         
         $results = $this->taskManager->processBatch($this->converter, $batchSize);
         
@@ -351,6 +397,7 @@ class TaskRunner {
         // 初始化计时器和计数器
         $lastCleanup = time();      // 上次僵尸进程清理时间
         $lastStateSave = time();    // 上次状态保存时间
+        $lastDictionaryMerge = time(); // 上次字典合并时间
         $iterationCount = 0;        // 迭代计数器
         
         // 加载上次的状态信息（如果存在）
@@ -371,14 +418,20 @@ class TaskRunner {
                 pcntl_signal_dispatch();
             }
             
+            $currentTime = time();
+            
+            // 定期执行字典合并（每天凌晨2点执行）
+            if ($currentTime - $lastDictionaryMerge > 86400 && date('H') == 2) {
+                $this->runDictionaryMerge();
+                $lastDictionaryMerge = $currentTime;
+            }
+            
             // 处理任务批次 - 每次处理10个任务
             $results = $this->taskManager->processBatch($this->converter, 10);
             
             if ($results['processed'] > 0) {
                 echo "[" . date('Y-m-d H:i:s') . "] 处理了 " . $results['processed'] . " 个任务\n";
             }
-            
-            $currentTime = time();
             
             // 定期清理僵尸进程（每10分钟一次）
             if ($currentTime - $lastCleanup > 600 && function_exists('pcntl_waitpid')) {

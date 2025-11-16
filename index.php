@@ -77,7 +77,7 @@ $customResult = null;
 $dynamicCustomResult = null;
 try {
     if ($converter) {
-        
+        //$converter->addCustomPinyin('你好', ['hello']);
         // 测试普通转换
         $conversionResult = $converter->convert('你好');
         $diagnostics['loading_time']['conversion'] = microtime(true) - $start_time;

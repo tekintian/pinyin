@@ -97,5 +97,7 @@ return [
     '共识机制' => ['gong shi ji zhi'],
     '挖矿' => ['wa kuang'],
     '李四' => ['li si'],
-    '云南' => ['yun nan']
+    '云南' => ['yun nan'],
+    '测试' => ['test'],
+    '你好' => ['hello']
 ];

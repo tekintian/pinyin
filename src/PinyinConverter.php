@@ -946,7 +946,7 @@ class PinyinConverter implements ConverterInterface {
     /**
      * 检查是否需要合并自学习字典
      */
-    private function checkMergeNeed() {
+    public function checkMergeNeed() {
         $needMerge = [];
         foreach (['with_tone', 'no_tone'] as $toneType) {
             // 确保字典已加载
