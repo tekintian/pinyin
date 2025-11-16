@@ -54,11 +54,24 @@ use tekintian\pinyin\BackgroundTaskManager;
  * 3. 一次性执行模式：
  *    php bin/task_runner.php -m once
  * 
- * 信号控制：
- * - SIGTERM/SIGINT: 优雅关闭进程
- * - SIGHUP: 优雅重启（保存状态后重启）
- * - SIGUSR1: 优雅重启
- * - SIGUSR2: 重新加载配置
+ * 使用示例:
+ * 
+ * 1. 守护进程模式（推荐生产环境）:
+ *    php bin/task_runner.php -m daemon -i 30
+ *    
+ * 2. 批量处理模式:
+ *    php bin/task_runner.php -m batch -b 100 -l 500
+ *    
+ * 3. 一次性执行模式:
+ *    php bin/task_runner.php -m once
+ * 
+ * 4. 显示帮助信息:
+ *    php bin/task_runner.php -h
+ * 
+ * 信号控制（守护进程模式下）:
+ * - kill -TERM <PID>   优雅关闭进程  kill -TERM $(cat /tmp/pinyin_task_daemon.pid)
+ * - kill -HUP <PID>    优雅重启      kill -HUP $(cat /tmp/pinyin_task_daemon.pid)
+ * - kill -USR2 <PID>   重新加载配置  kill -USR2 $(cat /tmp/pinyin_task_daemon.pid)
  * 
  * @package tekintian\pinyin
  * @author tekintian
@@ -641,36 +654,7 @@ class TaskRunner {
         return date('Y-m-d H:i:s', $lastCleanup);
     }
     
-    /**
-     * 定期保存状态（每30分钟一次）
-     */
-    private function autoSaveState() {
-        static $lastSaveTime = 0;
-        
-        $currentTime = time();
-        if ($currentTime - $lastSaveTime > 1800) { // 30分钟
-            $this->saveCurrentState();
-            $lastSaveTime = $currentTime;
-        }
-    }
-    
-    /**
-     * 优雅重启守护进程
-     */
-    private function restartDaemon($pidFile) {
-        echo "[" . date('Y-m-d H:i:s') . "] 正在重启守护进程...\n";
-        
-        // 清理PID文件
-        if (file_exists($pidFile)) {
-            unlink($pidFile);
-        }
-        
-        // 等待1秒确保清理完成
-        sleep(1);
-        
-        // 重新启动守护进程
-        $this->runDaemon();
-    }
+
     
     /**
      * 重新加载配置
@@ -820,4 +804,3 @@ class TaskRunner {
 // 运行任务运行器
 $runner = new TaskRunner();
 $runner->run();
-?>
