@@ -316,9 +316,14 @@ class TaskRunner {
             echo "[" . date('Y-m-d H:i:s') . "] 警告: POSIX扩展不可用，使用简化守护进程模式\n";
         }
         
-        // 设置进程标题（如果支持）
-        if (function_exists('cli_set_process_title')) {
-            cli_set_process_title('pinyin_task_daemon');
+        // 设置进程标题（如果支持且不会出错）
+        if (function_exists('cli_set_process_title') && PHP_OS_FAMILY !== 'Darwin') {
+            // 在macOS上cli_set_process_title可能有问题，所以跳过
+            try {
+                @cli_set_process_title('pinyin_task_daemon');
+            } catch (\Exception $e) {
+                // 忽略设置进程标题的错误，不影响主要功能
+            }
         }
         
         echo "[" . date('Y-m-d H:i:s') . "] 守护进程开始运行，检查间隔: {$interval}秒\n";
@@ -494,36 +499,7 @@ class TaskRunner {
         });
     }
     
-    /**
-     * 退出前的清理工作
-     */
-    private function cleanupBeforeExit($pidFile) {
-        try {
-            echo "[" . date('Y-m-d H:i:s') . "] 开始清理资源...\n";
-            
-            // 清理僵尸进程
-            $this->cleanupZombieProcesses();
-            
-            // 保存当前状态
-            $this->saveCurrentState();
-            
-            // 删除PID文件
-            if (file_exists($pidFile)) {
-                if (unlink($pidFile)) {
-                    echo "[" . date('Y-m-d H:i:s') . "] PID文件已删除: {$pidFile}\n";
-                } else {
-                    echo "[" . date('Y-m-d H:i:s') . "] 警告: 无法删除PID文件: {$pidFile}\n";
-                }
-            }
-            
-            echo "[" . date('Y-m-d H:i:s') . "] 清理完成，准备退出\n";
-            
-        } catch (\Exception $e) {
-            // 即使清理失败也要确保进程退出
-            error_log("[TaskRunner] 清理过程中发生错误: " . $e->getMessage());
-            echo "[" . date('Y-m-d H:i:s') . "] 清理过程中发生错误，强制退出\n";
-        }
-    }
+
     
     /**
      * 清理僵尸进程
