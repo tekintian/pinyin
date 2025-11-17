@@ -1,0 +1,157 @@
+name: PHP Unit Tests
+
+on:
+  push:
+    branches: [ main, dev, master ]
+  pull_request:
+    branches: [ main, dev, master ]
+
+jobs:
+  test:
+    name: PHP ${{ matrix.php-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        php-version: ['7.2', '7.3', '7.4', '8.0', '8.1', '8.2', '8.3']
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ matrix.php-version }}
+        coverage: none
+        tools: composer:v2
+
+    - name: Validate composer.json and composer.lock
+      run: composer validate --strict
+
+    - name: Cache Composer packages
+      id: composer-cache
+      uses: actions/cache@v3
+      with:
+        path: vendor
+        key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-php-
+
+    - name: Install dependencies
+      run: composer install --prefer-dist --no-progress --no-suggest
+
+    - name: Run unit tests
+      run: ./vendor/bin/phpunit test/UnitTest.php --verbose
+
+    - name: Run pressure tests
+      run: php test/PressureTest.php
+
+    - name: Run code style check
+      run: composer check-style
+
+    - name: Run static analysis
+      run: composer phpstan
+
+  memory-leak-detection:
+    name: Memory Leak Detection
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php-version: ['7.2', '8.3']
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ matrix.php-version }}
+
+    - name: Install dependencies
+      run: composer install --prefer-dist --no-progress --no-suggest
+
+    - name: Run extended memory leak test
+      run: |
+        php test/PressureTest.php
+        # 额外运行长时间内存测试
+        php -r '
+        require_once "vendor/autoload.php";
+        use tekintian\pinyin\PinyinConverter;
+        
+        $converter = new PinyinConverter(["custom_dict_persistence" => ["enable_delayed_write" => false]]);
+        $memory_readings = [];
+        
+        for ($i = 0; $i < 10000; $i++) {
+            $converter->convert("内存泄漏检测测试文本");
+            if ($i % 500 === 0) {
+                $memory_readings[] = memory_get_usage(true);
+                if (count($memory_readings) > 1) {
+                    $increase = $memory_readings[count($memory_readings)-1] - $memory_readings[0];
+                    if ($increase > 10 * 1024 * 1024) {
+                        echo "警告：检测到显著内存增长: " . round($increase/1024/1024,2) . " MB\n";
+                        exit(1);
+                    }
+                }
+            }
+        }
+        echo "内存泄漏检测通过\n";
+        '
+
+  performance-benchmark:
+    name: Performance Benchmark
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php-version: ['7.2', '8.3']
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ matrix.php-version }}
+
+    - name: Install dependencies
+      run: composer install --prefer-dist --no-progress --no-suggest
+
+    - name: Run performance benchmark
+      run: |
+        echo "开始性能基准测试..."
+        
+        # 基础性能测试
+        time php -r '
+        require_once "vendor/autoload.php";
+        use tekintian\pinyin\PinyinConverter;
+        
+        $converter = new PinyinConverter();
+        $start = microtime(true);
+        
+        for ($i = 0; $i < 1000; $i++) {
+            $converter->convert("性能基准测试文本");
+        }
+        
+        $duration = microtime(true) - $start;
+        echo "1000次转换耗时: " . round($duration, 3) . "秒\n";
+        echo "平均每次转换: " . round($duration * 1000 / 1000, 2) . "毫秒\n";
+        '
+        
+        # 批量转换性能测试
+        time php -r '
+        require_once "vendor/autoload.php";
+        use tekintian\pinyin\PinyinConverter;
+        
+        $converter = new PinyinConverter();
+        $texts = array_fill(0, 100, "批量性能测试文本");
+        
+        $start = microtime(true);
+        $results = $converter->batchConvert($texts);
+        $duration = microtime(true) - $start;
+        
+        echo "批量转换100条数据耗时: " . round($duration, 3) . "秒\n";
+        echo "平均每条数据: " . round($duration * 1000 / 100, 2) . "毫秒\n";
+        '
