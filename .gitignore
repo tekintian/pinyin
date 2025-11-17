@@ -1,7 +1,6 @@
 !.gitignore
 # Dependencies
 /vendor/
-/composer.phar
 
 # IDE files
 .idea/
@@ -9,52 +8,15 @@
 *.sublime-*
 *.swp
 *.swo
-*~
 
 # OS files
 .DS_Store
 Thumbs.db
 
-# Build files
-/build/
-/dist/
-
-# Test files
-/coverage/
-/phpunit.xml
-
-# Environment files
-.env
-.env.local
-.env.test
-.env.production
-
-# Log files
-/logs/
 *.log
-
-# Temporary files
-/tmp/
-/temp/
-*.tmp
-*.temp
-
-# Cache files
-/cache/
-*.cache
-
-# Database files
-*.sqlite
-*.sqlite3
-*.db
-
-# Local development
-/local/
-/dev/
 
 # Custom
 \#src/
-/pinyin.sublime-workspace
 /data/char_frequency.php
 debug_*
 debug/
