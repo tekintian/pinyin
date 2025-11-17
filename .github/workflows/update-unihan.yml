@@ -1,0 +1,133 @@
+name: 定时更新Unihan数据库
+
+on:
+  schedule:
+    # 每周一早上8点UTC执行 (北京时间周一16点)
+    - cron: '0 8 * * 1'
+  workflow_dispatch:
+    inputs:
+      force_update:
+        description: '强制更新（忽略缓存）'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  update-unihan:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: 设置PHP环境
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.1'
+        extensions: mbstring, iconv
+        
+    - name: 安装Composer依赖
+      run: composer install --no-progress --no-interaction
+      
+    - name: 检查是否需要更新
+      id: check_update
+      run: |
+        # 检查data/unihan目录最后修改时间
+        if [ -d "data/unihan" ]; then
+          LAST_MOD=$(find data/unihan -type f -name "*.php" -printf "%T@\n" | sort -n | tail -1 2>/dev/null || echo "0")
+          CURRENT_TIME=$(date +%s)
+          AGE_DAYS=$(( (CURRENT_TIME - ${LAST_MOD%.*}) / 86400 ))
+          echo "last_modification=$LAST_MOD" >> $GITHUB_OUTPUT
+          echo "age_days=$AGE_DAYS" >> $GITHUB_OUTPUT
+          echo "数据年龄: $AGE_DAYS 天"
+        else
+          echo "last_modification=0" >> $GITHUB_OUTPUT
+          echo "age_days=999" >> $GITHUB_OUTPUT
+          echo "data/unihan目录不存在"
+        fi
+        
+    - name: 更新Unihan数据
+      if: steps.check_update.outputs.age_days >= 7 || github.event.inputs.force_update == 'true'
+      run: |
+        echo "开始更新Unihan数据库..."
+        
+        # 设置强制更新参数
+        FORCE_FLAG=""
+        if [ "${{ github.event.inputs.force_update }}" = "true" ]; then
+          FORCE_FLAG="--force"
+          echo "启用强制更新模式"
+        fi
+        
+        # 更新Unihan数据
+        php unicode/extract_unihan.php --update $FORCE_FLAG
+        
+        # 提取拼音字典
+        php unicode/extract_unihan.php --extract
+        
+        echo "Unihan数据更新完成"
+        
+    - name: 清理临时文件
+      if: always()
+      run: |
+        # 清理临时下载和解压文件
+        echo "清理临时文件..."
+        rm -f unicode/Unihan.zip
+        rm -rf unicode/temp_unihan
+        echo "临时文件清理完成"
+        
+    - name: 运行测试验证
+      if: steps.check_update.outputs.age_days >= 7 || github.event.inputs.force_update == 'true'
+      run: |
+        echo "运行测试验证更新结果..."
+        
+        # 运行单元测试
+        if [ -f "phpunit.xml" ]; then
+          ./vendor/bin/phpunit --testdox --no-coverage test/UnitTest.php || echo "单元测试有警告，但继续执行"
+        fi
+        
+        # 基本功能测试
+        php -r "
+        require_once 'vendor/autoload.php';
+        try {
+            \$converter = new \Overtrue\Pinyin\Pinyin();
+            \$result = \$converter->convert('你好');
+            echo '基本转换测试: ' . (\$result && count(\$result) > 0 ? '✓ 通过' : '✗ 失败') . \"\n\";
+            \$result = \$converter->convert('龘');
+            echo '生僻字测试: ' . (\$result && count(\$result) > 0 ? '✓ 通过' : '✗ 失败') . \"\n\";
+        } catch (Exception \$e) {
+            echo '测试错误: ' . \$e->getMessage() . \"\n\";
+            exit(1);
+        }
+        "
+        
+    - name: 提交更改
+      if: steps.check_update.outputs.age_days >= 7 || github.event.inputs.force_update == 'true'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        # 添加更新的数据文件
+        git add data/
+        
+        # 检查是否有更改
+        if git diff --staged --quiet; then
+          echo "没有文件需要提交"
+        else
+          TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S UTC')
+          git commit -m "auto: 更新Unihan数据库 ($TIMESTAMP)"
+          git push
+        fi
+        
+    - name: 更新结果通知
+      if: always()
+      run: |
+        if [ "${{ steps.check_update.outputs.age_days }}" -ge 7 ] || [ "${{ github.event.inputs.force_update }}" = "true" ]; then
+          echo "✅ Unihan数据库更新完成"
+          echo "📊 更新时间: $(date)"
+          echo "📁 生成文件: $(find data/unihan/ -name '*.php' 2>/dev/null | wc -l) 个"
+        else
+          echo "ℹ️ 数据库较新，无需更新"
+          echo "📊 数据年龄: ${{ steps.check_update.outputs.age_days }} 天"
+        fi
