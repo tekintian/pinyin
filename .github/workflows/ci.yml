@@ -14,7 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        php-version: ['7.2', '7.3', '7.4', '8.0', '8.1', '8.2', '8.3']
+        php-version: ['7.4', '8.0', '8.1', '8.2', '8.3']
 
     steps:
     - name: Checkout code
@@ -40,7 +40,7 @@ jobs:
           ${{ runner.os }}-php-
 
     - name: Install dependencies
-      run: composer install --prefer-dist --no-progress --no-suggest
+      run: composer install --prefer-dist --no-progress
 
     - name: Run unit tests
       run: ./vendor/bin/phpunit test/UnitTest.php --verbose
@@ -71,7 +71,7 @@ jobs:
         php-version: ${{ matrix.php-version }}
 
     - name: Install dependencies
-      run: composer install --prefer-dist --no-progress --no-suggest
+      run: composer install --prefer-dist --no-progress
 
     - name: Run extended memory leak test
       run: |
@@ -117,7 +117,7 @@ jobs:
         php-version: ${{ matrix.php-version }}
 
     - name: Install dependencies
-      run: composer install --prefer-dist --no-progress --no-suggest
+      run: composer install --prefer-dist --no-progress
 
     - name: Run performance benchmark
       run: |
