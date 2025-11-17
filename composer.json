@@ -27,11 +27,6 @@
       "src/functions.php"
     ]
   },
-  "autoload-dev": {
-    "psr-4": {
-      "tekintian\\pinyin\\tests\\": "tests/"
-    }
-  },
   "require": {
     "php": "^7.2 || ^8.0"
   },
