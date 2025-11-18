@@ -4,6 +4,7 @@ namespace tekintian\pinyin;
 use tekintian\pinyin\Contracts\ConverterInterface;
 use tekintian\pinyin\Exception\PinyinException;
 use tekintian\pinyin\Utils\PinyinConstants;
+use InvalidArgumentException;
 
 /**
  * 汉字转拼音工具
