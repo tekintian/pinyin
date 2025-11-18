@@ -399,17 +399,61 @@ if (!function_exists('convert_to_number_tone')) {
      */
     function convert_to_number_tone($pinyin)
     {
-        $toneMap = [
-            'ā' => 'a1', 'á' => 'a2', 'ǎ' => 'a3', 'à' => 'a4',
-            'ē' => 'e1', 'é' => 'e2', 'ě' => 'e3', 'è' => 'e4',
-            'ī' => 'i1', 'í' => 'i2', 'ǐ' => 'i3', 'ì' => 'i4',
-            'ō' => 'o1', 'ó' => 'o2', 'ǒ' => 'o3', 'ò' => 'o4',
-            'ū' => 'u1', 'ú' => 'u2', 'ǔ' => 'u3', 'ù' => 'u4',
-            'ǖ' => 'v1', 'ǘ' => 'v2', 'ǚ' => 'v3', 'ǜ' => 'v4',
+        // 声调符号到数字的映射
+        $toneToNumber = [
+            'ā' => '1', 'á' => '2', 'ǎ' => '3', 'à' => '4',
+            'ē' => '1', 'é' => '2', 'ě' => '3', 'è' => '4',
+            'ī' => '1', 'í' => '2', 'ǐ' => '3', 'ì' => '4',
+            'ō' => '1', 'ó' => '2', 'ǒ' => '3', 'ò' => '4',
+            'ū' => '1', 'ú' => '2', 'ǔ' => '3', 'ù' => '4',
+            'ǖ' => '1', 'ǘ' => '2', 'ǚ' => '3', 'ǜ' => '4',
+        ];
+        
+        // 声调符号到无声调字母的映射
+        $toneToPlain = [
+            'ā' => 'a', 'á' => 'a', 'ǎ' => 'a', 'à' => 'a',
+            'ē' => 'e', 'é' => 'e', 'ě' => 'e', 'è' => 'e',
+            'ī' => 'i', 'í' => 'i', 'ǐ' => 'i', 'ì' => 'i',
+            'ō' => 'o', 'ó' => 'o', 'ǒ' => 'o', 'ò' => 'o',
+            'ū' => 'u', 'ú' => 'u', 'ǔ' => 'u', 'ù' => 'u',
+            'ǖ' => 'v', 'ǘ' => 'v', 'ǚ' => 'v', 'ǜ' => 'v',
             'ü' => 'v',
         ];
-
-        return strtr($pinyin, $toneMap);
+        
+        // 按空格分割处理多个拼音
+        $pinyins = explode(' ', $pinyin);
+        $result = [];
+        
+        foreach ($pinyins as $py) {
+            if (empty($py)) {
+                $result[] = '';
+                continue;
+            }
+            
+            $toneNumber = '';
+            $plainPinyin = '';
+            
+            // 查找声调符号并确定声调数字
+            for ($i = 0; $i < mb_strlen($py, 'UTF-8'); $i++) {
+                $char = mb_substr($py, $i, 1, 'UTF-8');
+                
+                if (isset($toneToNumber[$char])) {
+                    $toneNumber = $toneToNumber[$char];
+                    $plainPinyin .= $toneToPlain[$char];
+                } else {
+                    $plainPinyin .= $char;
+                }
+            }
+            
+            // 如果有声调，在末尾添加数字
+            if ($toneNumber) {
+                $result[] = $plainPinyin . $toneNumber;
+            } else {
+                $result[] = $plainPinyin;
+            }
+        }
+        
+        return implode(' ', $result);
     }
 }
 

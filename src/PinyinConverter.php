@@ -2201,7 +2201,7 @@ class PinyinConverter implements ConverterInterface {
      * @return string 转换后的拼音字符串
      */
     public function convert(
-        string $text,
+        $text,
         string $separator = ' ',
         bool $withTone = false,
         $specialCharParam = [],
@@ -2211,6 +2211,9 @@ class PinyinConverter implements ConverterInterface {
         if (!is_string($text)) {
             throw new InvalidArgumentException('Input text must be a string');
         }
+        
+        // 转换为字符串类型
+        $text = (string) $text;
         
         // 增加转换计数
         $this->totalConversions++;
@@ -2561,7 +2564,7 @@ class PinyinConverter implements ConverterInterface {
             if (is_array($toneTypes)) {
                 foreach ($toneTypes as $toneType => $data) {
                     if ($data !== null) {
-                        $memoryInfo[$dictType][$toneType] = count($data);
+                        $memoryInfo[$dictType][$toneType] = is_array($data) ? count($data) : strlen($data);
                     }
                 }
             }
