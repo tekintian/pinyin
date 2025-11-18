@@ -1027,6 +1027,10 @@ class PinyinConverter implements ConverterInterface {
 
         $commonPath = $this->config['dict']['common'][$toneType];
         $commonData = require_file($commonPath);
+        // 确保 $commonData 是数组类型
+        if (!is_array($commonData)) {
+            $commonData = [];
+        }
         $commonData = pinyin_format_array($commonData);
         
         $selfLearnData = $this->dicts['self_learn'][$toneType];
@@ -1065,6 +1069,10 @@ class PinyinConverter implements ConverterInterface {
         // 检查目标字典中是否已存在该字符
         $targetCommonPath = $this->config['dict']['common'][$targetToneType];
         $targetCommonData = require_file($targetCommonPath);
+        // 确保 $targetCommonData 是数组类型
+        if (!is_array($targetCommonData)) {
+            $targetCommonData = [];
+        }
         $targetCommonData = pinyin_format_array($targetCommonData);
         
         if (isset($targetCommonData[$char])) {
@@ -1160,6 +1168,10 @@ class PinyinConverter implements ConverterInterface {
         foreach ($unihanFiles as $file) {
             if (is_file_exists($file)) {
                 $unihanData = require_file($file);
+                // 确保 $unihanData 是数组类型
+                if (!is_array($unihanData)) {
+                    continue;
+                }
                 if (isset($unihanData[$char])) {
                     $pinyin = is_array($unihanData[$char]) ? $unihanData[$char][0] : $unihanData[$char];
                     return $pinyin;
@@ -1360,9 +1372,17 @@ class PinyinConverter implements ConverterInterface {
     private function migrateLowFrequencyChars($toneType) {
         $commonPath = $this->config['dict']['common'][$toneType];
         $commonData = require_file($commonPath);
+        // 确保 $commonData 是数组类型
+        if (!is_array($commonData)) {
+            $commonData = [];
+        }
   
         $rarePath = $this->config['dict']['rare'][$toneType];
         $rareData = is_file_exists($rarePath) ? require_file($rarePath) : [];
+        // 确保 $rareData 是数组类型
+        if (!is_array($rareData)) {
+            $rareData = [];
+        }
         
         // 计算常用字典中每个字符的平均频率
         $totalFrequency = 0;
@@ -1882,6 +1902,10 @@ class PinyinConverter implements ConverterInterface {
         // 加载常用字典
         $commonPath = $this->config['dict']['common'][$type];
         $commonData = require_file($commonPath);
+        // 确保 $commonData 是数组类型
+        if (!is_array($commonData)) {
+            $commonData = [];
+        }
         
         // 如果常用字典中还没有这个字，就添加进去
         if (!isset($commonData[$char])) {
