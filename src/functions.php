@@ -1091,7 +1091,7 @@ if (!function_exists('must_string')) {
     function must_string($text, string $default = '')
     {
         if (is_string($text)) {
-            return $text;
+            return trim($text);
         }
         if (is_array($text)) {
             return implode(' ', $text);
@@ -1105,4 +1105,51 @@ if (!function_exists('must_string')) {
         // 安全转换（此时转换结果是可预期的）
         return (string) $text;
     }
+}
+
+if (!function_exists('split_pinyin_tone')) {
+    /**
+     * 将带声调的拼音字符拆分为基础字母和声调
+     * 
+     * @param string $char 带声调的单个拼音字符（如 'ō' 'cè' 中的 'è'）
+     * @return array 包含 'letter'（基础字母）和 'tone'（声调1-4，0为轻声）的数组
+     */
+    function split_pinyin_tone($char) {
+        // 处理空字符或非拼音字符
+        if (empty($char)) {
+            return ['letter' => '', 'tone' => 0];
+        }
+        
+        // 带声调的拼音字符映射表（键：带声调字符，值：[基础字母, 声调]）
+        // 覆盖所有常见带声调的拼音元音（a/o/e/i/u/ü）
+        $toneMap = [
+            // a 系列
+            'ā' => ['a', 1], 'á' => ['a', 2], 'ǎ' => ['a', 3], 'à' => ['a', 4],
+            // o 系列
+            'ō' => ['o', 1], 'ó' => ['o', 2], 'ǒ' => ['o', 3], 'ò' => ['o', 4],
+            // e 系列
+            'ē' => ['e', 1], 'é' => ['e', 2], 'ě' => ['e', 3], 'è' => ['e', 4],
+            // i 系列
+            'ī' => ['i', 1], 'í' => ['i', 2], 'ǐ' => ['i', 3], 'ì' => ['i', 4],
+            // u 系列
+            'ū' => ['u', 1], 'ú' => ['u', 2], 'ǔ' => ['u', 3], 'ù' => ['u', 4],
+            // ü 系列（注意：ü的Unicode编码是U+00FC，带声调的是U+01D6等）
+            'ǖ' => ['ü', 1], 'ǘ' => ['ü', 2], 'ǚ' => ['ü', 3], 'ǜ' => ['ü', 4],
+        ];
+        
+        // 若字符在映射表中，直接返回拆分结果
+        if (isset($toneMap[$char])) {
+            return [
+                'letter' => $toneMap[$char][0],
+                'tone' => $toneMap[$char][1]
+            ];
+        }
+        
+        // 若不在映射表中（可能是无声调字符或辅音），默认声调为0（轻声）
+        return [
+            'letter' => $char,
+            'tone' => 0
+        ];
+    }
+
 }
