@@ -614,6 +614,9 @@ class PinyinConverter implements ConverterInterface {
      * @param bool $withTone 是否带声调
      */
     public function addCustomPinyin($char, $pinyin, $withTone = false) {
+        if (empty($char) || empty($pinyin)) {
+            throw new PinyinException("自定义拼音不能为空或包含无效字符", PinyinException::ERROR_INVALID_INPUT);
+        }
         $type = $withTone ? 'with_tone' : 'no_tone';
         $this->loadCustomDict($withTone);
         //$wordLen = mb_strlen($char, 'UTF-8');
@@ -1803,6 +1806,11 @@ class PinyinConverter implements ConverterInterface {
             throw new PinyinException("多音字规则格式无效", PinyinException::ERROR_INVALID_INPUT);
         }
         
+        // 初始化规则数组（如果不是数组）
+        if (!is_array($this->dicts['polyphone_rules'][$char])) {
+            $this->dicts['polyphone_rules'][$char] = [];
+        }
+        
         // 检查规则是否已存在
         $ruleExists = false;
         foreach ($this->dicts['polyphone_rules'][$char] as $existingRule) {
@@ -1831,8 +1839,7 @@ class PinyinConverter implements ConverterInterface {
         if (!$ruleExists) {
             $this->dicts['polyphone_rules'][$char][] = $rule;
             
-            // 保存到文件 - 注意这里是重写整个文件，而不是追加
-            // 但因为我们只添加了新规则，所以效果上相当于"智能追加"
+            // 保存到文件
             $path = $this->config['dict']['polyphone_rules'];
             write_to_file($path, "<?php\nreturn " . pinyin_compact_array_export($this->dicts['polyphone_rules']) . ";\n");
         }
