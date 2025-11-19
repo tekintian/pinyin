@@ -206,6 +206,12 @@ class PinyinConverter implements ConverterInterface {
     private $totalConversions = 0;
 
     /**
+     * 字符频率统计
+     * @var array
+     */
+    private $characterStats = [];
+
+    /**
      * 频率数据是否已修改（需要在析构函数中保存）
      * @var bool
      */
@@ -2245,7 +2251,7 @@ class PinyinConverter implements ConverterInterface {
         if (!preg_match(PinyinConstants::getChinesePattern('full'), $textAfterMultiWords)) {
             $textAfterMultiWords = str_replace(['[[CUSTOM_PINYIN:', ']]'], '', $textAfterMultiWords);
             $textAfterMultiWords = str_replace('[[SEPARATOR]]', $separator, $textAfterMultiWords);
-            return $textAfterMultiWords;
+            return pinyin_trim($textAfterMultiWords, $separator);
         }
 
         // 处理自定义多字词语的保护标记
@@ -2316,6 +2322,8 @@ class PinyinConverter implements ConverterInterface {
             );
         }
 
+        // 去除首位空格和分隔符
+        $finalResult=pinyin_trim($finalResult, $separator);
    
         // 缓存结果
         $this->cache[$cacheKey] = $finalResult;
@@ -2512,6 +2520,7 @@ class PinyinConverter implements ConverterInterface {
             'cache_efficiency' => $this->analyzeCacheEfficiency(),
             'memory_usage' => $this->analyzeMemoryUsage(),
             'dict_loading' => $this->analyzeDictLoading(),
+            'character_frequency' => $this->analyzeCharacterFrequency(),
             'optimization_suggestions' => $this->generateOptimizationSuggestions(),
             'execution_time' => microtime(true) - $this->startTime,
             'timestamp' => time()
@@ -2573,6 +2582,19 @@ class PinyinConverter implements ConverterInterface {
             'dict_details' => $memoryInfo,
             'cache_entries' => count($this->cache),
             'estimated_memory_mb' => round($totalEntries * 0.1 + count($this->cache) * 0.05, 2) // 估算值
+        ];
+    }
+    
+    /**
+     * 分析字符频率统计
+     * @return array 字符频率分析
+     */
+    private function analyzeCharacterFrequency(): array {
+        return [
+            'total_conversions' => $this->totalConversions,
+            'unique_characters' => count($this->characterStats),
+            'top_characters' => array_slice($this->characterStats, 0, 10, true),
+            'frequency_updated' => !empty($this->characterStats)
         ];
     }
     
