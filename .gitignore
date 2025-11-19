@@ -20,3 +20,4 @@ Thumbs.db
 /data/char_frequency.php
 debug_*
 debug/
+/.phpunit.result.cache

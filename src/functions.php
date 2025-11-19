@@ -14,6 +14,20 @@
 use tekintian\pinyin\Exception\PinyinException;
 use tekintian\pinyin\Utils\PinyinConstants;
 
+// 添加PHP 7.2兼容的str_contains函数实现
+if (!function_exists('str_contains')) {
+    /**
+     * 检查字符串是否包含指定子串
+     * @param string $haystack 主字符串
+     * @param string $needle 子字符串
+     * @return bool 是否包含
+     */
+    function str_contains(string $haystack, string $needle): bool
+    {
+        return $needle === '' || mb_strpos($haystack, $needle) !== false;
+    }
+}
+
 if (!function_exists('require_file')) {
     /**
      * 引入PHP文件
@@ -26,7 +40,7 @@ if (!function_exists('require_file')) {
         if (!is_file_exists($file)) {
             return $default;
         }
-        return require_once $file;
+        return require $file;
     }
 }
 
@@ -53,7 +67,12 @@ if (!function_exists('pinyin_debug')) {
                 default:
                     $prefix = 'ℹ️ ';
             }
-            echo $prefix . $message . "\n";
+            // 如果脚本运行模式为 cli直接echo输出,否则使用 errlog记录日志
+            if (PHP_SAPI === 'cli') {
+                echo $prefix . $message . "\n";
+            } else {
+                error_log($prefix . $message);
+            }
         }
     }
 }
@@ -399,61 +418,17 @@ if (!function_exists('convert_to_number_tone')) {
      */
     function convert_to_number_tone($pinyin)
     {
-        // 声调符号到数字的映射
-        $toneToNumber = [
-            'ā' => '1', 'á' => '2', 'ǎ' => '3', 'à' => '4',
-            'ē' => '1', 'é' => '2', 'ě' => '3', 'è' => '4',
-            'ī' => '1', 'í' => '2', 'ǐ' => '3', 'ì' => '4',
-            'ō' => '1', 'ó' => '2', 'ǒ' => '3', 'ò' => '4',
-            'ū' => '1', 'ú' => '2', 'ǔ' => '3', 'ù' => '4',
-            'ǖ' => '1', 'ǘ' => '2', 'ǚ' => '3', 'ǜ' => '4',
-        ];
-        
-        // 声调符号到无声调字母的映射
-        $toneToPlain = [
-            'ā' => 'a', 'á' => 'a', 'ǎ' => 'a', 'à' => 'a',
-            'ē' => 'e', 'é' => 'e', 'ě' => 'e', 'è' => 'e',
-            'ī' => 'i', 'í' => 'i', 'ǐ' => 'i', 'ì' => 'i',
-            'ō' => 'o', 'ó' => 'o', 'ǒ' => 'o', 'ò' => 'o',
-            'ū' => 'u', 'ú' => 'u', 'ǔ' => 'u', 'ù' => 'u',
-            'ǖ' => 'v', 'ǘ' => 'v', 'ǚ' => 'v', 'ǜ' => 'v',
+        $toneMap = [
+            'ā' => 'a1', 'á' => 'a2', 'ǎ' => 'a3', 'à' => 'a4',
+            'ē' => 'e1', 'é' => 'e2', 'ě' => 'e3', 'è' => 'e4',
+            'ī' => 'i1', 'í' => 'i2', 'ǐ' => 'i3', 'ì' => 'i4',
+            'ō' => 'o1', 'ó' => 'o2', 'ǒ' => 'o3', 'ò' => 'o4',
+            'ū' => 'u1', 'ú' => 'u2', 'ǔ' => 'u3', 'ù' => 'u4',
+            'ǖ' => 'v1', 'ǘ' => 'v2', 'ǚ' => 'v3', 'ǜ' => 'v4',
             'ü' => 'v',
         ];
-        
-        // 按空格分割处理多个拼音
-        $pinyins = explode(' ', $pinyin);
-        $result = [];
-        
-        foreach ($pinyins as $py) {
-            if (empty($py)) {
-                $result[] = '';
-                continue;
-            }
-            
-            $toneNumber = '';
-            $plainPinyin = '';
-            
-            // 查找声调符号并确定声调数字
-            for ($i = 0; $i < mb_strlen($py, 'UTF-8'); $i++) {
-                $char = mb_substr($py, $i, 1, 'UTF-8');
-                
-                if (isset($toneToNumber[$char])) {
-                    $toneNumber = $toneToNumber[$char];
-                    $plainPinyin .= $toneToPlain[$char];
-                } else {
-                    $plainPinyin .= $char;
-                }
-            }
-            
-            // 如果有声调，在末尾添加数字
-            if ($toneNumber) {
-                $result[] = $plainPinyin . $toneNumber;
-            } else {
-                $result[] = $plainPinyin;
-            }
-        }
-        
-        return implode(' ', $result);
+
+        return strtr($pinyin, $toneMap);
     }
 }
 
@@ -1071,5 +1046,34 @@ if (!function_exists('filter_pure_chinese')) {
             $pattern = PinyinConstants::getChinesePattern('full', true);
             return preg_replace($pattern, '', $text);
         }
+    }
+}
+
+if (!function_exists('must_string')) {
+    /**
+     * 确保输入文本为字符串类型
+     * 如果无法转换为字符串，则返回空字符串
+     * 如果输入为数组，则转换为字符串并用空格分隔
+     *
+     * @param [type] $text 输入文本
+     * @param string $default 默认值（可选）
+     * @return string 转换后的字符串
+     */
+    function must_string($text, string $default = '')
+    {
+        if (is_string($text)) {
+            return $text;
+        }
+        if (is_array($text)) {
+            return implode(' ', $text);
+        }
+        // 检查是否为无法转换为有效字符串的类型
+        if (is_resource($text) ||
+            (is_object($text) && !method_exists($text, '__toString'))) {
+            pinyin_debug('Input text must be a string or convertible to string', 'error');
+            return $default;
+        }
+        // 安全转换（此时转换结果是可预期的）
+        return (string) $text;
     }
 }

@@ -531,7 +531,7 @@ class PinyinConverter implements ConverterInterface {
         
         // 确保数据是数组格式
         if (!is_array($data)) {
-            $data = [];
+            $data = null; // 如果异常,直接置为null 这样下次可以重新加载
         }
 
         $this->dicts[$dictType][$type] = $data;
@@ -2207,14 +2207,12 @@ class PinyinConverter implements ConverterInterface {
         $specialCharParam = [],
         array $polyphoneTempMap = []
     ): string {
-        // 输入类型验证
-        if (!is_string($text)) {
-            throw new InvalidArgumentException('Input text must be a string');
+        // 确保 $text 是字符串类型
+        $text = must_string($text);
+        // 如果为空,直接返回
+        if(empty($text)) {
+            return '';
         }
-        
-        // 转换为字符串类型
-        $text = (string) $text;
-        
         // 增加转换计数
         $this->totalConversions++;
         
@@ -2314,13 +2312,7 @@ class PinyinConverter implements ConverterInterface {
             );
         }
 
-        //$finalResult = str_replace('%', '', $finalResult);
-
-        // 如果需要带声调，转换为数字声调格式
-        if ($withTone) {
-            $finalResult = convert_to_number_tone($finalResult);
-        }
-        
+   
         // 缓存结果
         $this->cache[$cacheKey] = $finalResult;
         
@@ -2762,8 +2754,8 @@ class PinyinConverter implements ConverterInterface {
         // \p{N} 匹配 所有语言的数字（如阿拉伯数字、中文数字等），覆盖范围极广。
         $processedText = preg_replace('/[^\p{L}\p{N}\s]/u', $separator, $text);
         
-        // 修复：对于纯英文或纯数字文本，先保留空格作为单词分隔符
-        if (preg_match('/^[a-zA-Z\s]+$/', $processedText) || preg_match('/^[0-9\s]+$/', $processedText)) {
+        // 对于只包含非中文的文本，直接转换为小写字母，并将空格转换为分隔符
+        if (preg_match('/^[^'.PinyinConstants::FULL_CHINESE_RANGE .']+$/u', $processedText)) {
             // 纯英文或纯数字文本，将空格转换为分隔符
             $pinyin = strtolower($processedText);
             $pinyin = preg_replace('/\s+/', $separator, $pinyin);

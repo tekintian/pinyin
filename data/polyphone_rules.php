@@ -96,14 +96,11 @@ return [
 
     // 中：zhōng（中间） vs zhòng（中奖）
     '中' => [
-        ['type' => 'post', 'char' => '奖', 'pinyin' => 'zhòng'], // 中奖
-        ['type' => 'post', 'char' => '靶', 'pinyin' => 'zhòng'], // 中靶
-        ['type' => 'post', 'char' => '了', 'pinyin' => 'zhòng'],  // 中了
-        ['type' => 'word', 'word' => '中台', 'pinyin' => 'zhōng'], // 中台（数据中台）
         ['type' => 'post', 'char' => '间', 'pinyin' => 'zhōng'], // 中间
         ['type' => 'post', 'char' => '心', 'pinyin' => 'zhōng'], // 中心（数据中台）
+        ['type' => 'post', 'char' => '奖', 'pinyin' => 'zhòng'], // 中奖
+        ['type' => 'post', 'char' => '靶', 'pinyin' => 'zhòng'], // 中靶
         ['type' => 'word', 'word' => '中台', 'pinyin' => 'zhōng'], // 中台（数据中台）
-        
     ],
 
     // 盛：shèng（盛开） vs chéng（盛饭）

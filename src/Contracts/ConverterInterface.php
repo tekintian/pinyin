@@ -23,7 +23,7 @@ interface ConverterInterface
      * @return string 转换后的拼音字符串
      */
     public function convert(
-        string $text,
+        $text,
         string $separator = ' ',
         bool $withTone = false,
         $specialCharParam = [],

@@ -87,9 +87,31 @@ try {
         $diagnostics['loading_time']['custom'] = microtime(true) - $start_time;
 
         // 测试动态添加的自定义拼音
-        $converter->addCustomPinyin('测试', ['test']);
+        // $converter->addCustomPinyin('测试', ['test']);
         $dynamicCustomResult = $converter->convert('测试');
+
+        $diyStr='7天开发企业级AI客户服务系统Vue3+Go+Gin+K8s技术栈（含源码+部署文档）';
+        $diyResult = $converter->convert($diyStr);
+        $slugResult = $converter->getUrlSlug($diyStr);
+
+       // $result = $converter->convert(boolval(1), '', false);
+        $result = $converter->convert('䶮', '', false);
+        $result = $converter->getUrlSlug('Hello World 123');
+        $result = $converter->getUrlSlug('Test U.RL Slug!');
+
+        $customOptions = [
+            'special_char' => [
+                'default_mode' => 'delete'
+            ]
+        ];
+        
+        $customConverter = new tekintian\pinyin\PinyinConverter($customOptions);
+        $result = $customConverter->convert('中国@#$%', ' ', false);
+
+
         $diagnostics['loading_time']['dynamic_custom'] = microtime(true) - $start_time;
+
+
     }
 } catch (Exception $e) {
     $diagnostics['errors']['conversion'] = $e->getMessage();
@@ -136,7 +158,11 @@ try {
         <?php else: ?>
             <p class="success">✅ 普通转换结果: <?php echo htmlspecialchars($conversionResult); ?></p>
         <?php endif; ?>
-        
+        <br/>
+        <center><?php echo htmlspecialchars($diyStr); ?></center>
+        <center><?php echo htmlspecialchars($diyResult); ?></center>
+        <center><?php echo htmlspecialchars($slugResult); ?></center>
+        <br/>
         <h3>字典文件自定义拼音测试</h3>
         <?php if ($customResult !== 'hello'): ?>
             <p class="error">❌ 字典文件自定义拼音未生效: <?php echo htmlspecialchars($customResult); ?></p>
