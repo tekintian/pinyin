@@ -35,12 +35,55 @@ if (!function_exists('require_file')) {
      * @param mixed $default 默认返回值
      * @return mixed
      */
-    function require_file($file, $default = [])
+    /**
+     * 引入PHP文件，提供更好的错误处理和类型安全
+     * 
+     * @param string $file 文件路径
+     * @param mixed $default 默认返回值
+     * @param bool $enableCache 是否启用简单缓存（适用于频繁加载的配置文件）
+     * @return mixed
+     */
+    function require_file(string $file, $default = [], bool $enableCache = true)
     {
+        // 静态缓存，用于缓存已加载的文件内容
+        static $fileCache = [];
+        
+        // 启用缓存且文件已在缓存中
+        if ($enableCache && isset($fileCache[$file])) {
+            return $fileCache[$file];
+        }
+        
+        // 安全性检查：确保文件路径有效且不包含目录遍历字符
+        if (strpos($file, '..') !== false || !is_string($file) || empty($file)) {
+            trigger_error("Invalid file path: {$file}", E_USER_WARNING);
+            return $default;
+        }
+        
+        // 检查文件是否存在
         if (!is_file_exists($file)) {
             return $default;
         }
-        return require $file;
+        
+        try {
+            // 使用include替代require可以捕获错误
+            // 使用输出缓冲捕获可能的意外输出
+            ob_start();
+            $result = include $file;
+            ob_end_clean(); // 清理可能的输出
+            
+            // 缓存结果
+            if ($enableCache) {
+                $fileCache[$file] = $result;
+            }
+            
+            return $result;
+        } catch (Throwable $e) {
+            // 记录错误
+            if (function_exists('pinyin_debug')) {
+                pinyin_debug("Failed to require file: {$file}, Error: {$e->getMessage()}", 'error');
+            }
+            return $default;
+        }
     }
 }
 
@@ -465,7 +508,7 @@ if (!function_exists('convert_from_number_tone')) {
             'ua1' => 'uā', 'ua2' => 'uá', 'ua3' => 'uǎ', 'ua4' => 'uà', 'ua5' => 'ua',
             'uo1' => 'uō', 'uo2' => 'uó', 'uo3' => 'uǒ', 'uo4' => 'uò', 'uo5' => 'uo',
             'üe1' => 'üē', 'üe2' => 'üé', 'üe3' => 'üě', 'üe4' => 'üè', 'üe5' => 'üe',
-            've1' => 'üē',  've2' => 'üé',  've3' => 'üě',  've4' => 'üè',  've5' => 'üe',  // v代替ü
+'ve1' => 'üē',  've2' => 'üé',  've3' => 'üě',  've4' => 'üè',  've5' => 'üe',  // v代替ü
             'iu1' => 'iū',  'iu2' => 'iú',  'iu3' => 'iǔ',  'iu4' => 'iù',  'iu5' => 'iu',  // 对应iou
             // 单元音（长度2）
             'a1' => 'ā', 'a2' => 'á', 'a3' => 'ǎ', 'a4' => 'à', 'a5' => 'a',
@@ -735,9 +778,10 @@ if (!function_exists('pinyin_compact_array_export')) {
     /**
      * 紧凑数组导出（用于生成PHP数组代码）
      * @param array $array 数组数据
+     * @param int $indentLevel 缩进级别
      * @return string PHP数组代码
      */
-    function pinyin_compact_array_export($array)
+    function pinyin_compact_array_export($array, $indentLevel = 0)
     {
         if (empty($array)) {
             return '[]';
@@ -745,15 +789,24 @@ if (!function_exists('pinyin_compact_array_export')) {
 
         $isAssoc = array_keys($array) !== range(0, count($array) - 1);
         $items = [];
+        $indent = str_repeat('    ', $indentLevel);
+        $nextIndent = str_repeat('    ', $indentLevel + 1);
 
         foreach ($array as $key => $value) {
             $keyStr = $isAssoc ? "'" . str_replace("'", "\\'", $key) . "' => " : '';
 
-            if (is_array($value)) {
-                $valueItems = array_map(function ($item) {
-                    return "'" . str_replace("'", "\\'", $item) . "'";
+            // 特殊处理：如果是拼音数组（简单字符串数组），使用紧凑格式
+            if (is_array($value) && !empty($value) && 
+                array_keys($value) === range(0, count($value) - 1) && 
+                array_reduce($value, function($carry, $item) { return $carry && is_string($item); }, true)) {
+                // 这是一个简单的拼音数组，使用紧凑格式
+                $valueItems = array_map(function ($item) { 
+                    return "'" . str_replace("'", "\\'", $item) . "'"; 
                 }, $value);
                 $valueStr = '[' . implode(',', $valueItems) . ']';
+            } else if (is_array($value)) {
+                // 递归处理其他嵌套数组，传递缩进级别
+                $valueStr = pinyin_compact_array_export($value, $indentLevel + 1);
             } else {
                 $valueStr = "'" . str_replace("'", "\\'", $value) . "'";
             }
@@ -761,7 +814,52 @@ if (!function_exists('pinyin_compact_array_export')) {
             $items[] = $keyStr . $valueStr;
         }
 
-        return "[\n    " . implode(",\n    ", $items) . "\n]";
+        // 对于关联数组，判断是否为多音字规则的特殊格式
+        if ($isAssoc) {
+            // 检查是否是顶层的多音字规则数组（键是单个汉字且值不是简单拼音数组）
+            $isPolyphoneRules = true;
+            foreach (array_keys($array) as $key) {
+                if (mb_strlen($key) !== 1) {
+                    $isPolyphoneRules = false;
+                    break;
+                }
+            }
+            
+            if ($isPolyphoneRules && count($array) > 3) {
+                // 检查第一个值是否是复杂数组（不是简单拼音数组）
+                $firstValue = reset($array);
+                if (is_array($firstValue) && !empty($firstValue) && 
+                    (array_keys($firstValue) !== range(0, count($firstValue) - 1) || 
+                     !array_reduce($firstValue, function($carry, $item) { return $carry && is_string($item); }, true))) {
+                    // 顶层多音字规则：每个汉字键单独一行
+                    $result = "[\n";
+                    foreach ($items as $item) {
+                        $result .= "    " . $item . ",\n";
+                    }
+                    return rtrim($result, ",\n") . "\n]";
+                }
+            }
+            
+            // 其他关联数组（包括普通字典）：保持键值对格式
+            $result = "[\n";
+            foreach ($items as $item) {
+                $result .= "    " . $item . ",\n";
+            }
+            return rtrim($result, ",\n") . "\n]";
+        } else {
+            // 对于索引数组，根据缩进级别格式化
+            if ($indentLevel > 0) {
+                // 嵌套的索引数组：使用当前缩进级别，每个元素后加逗号
+                $result = "[\n";
+                foreach ($items as $item) {
+                    $result .= $nextIndent . $item . ",\n";
+                }
+                return rtrim($result, ",\n") . "\n" . $indent . "]";
+            } else {
+                // 顶层索引数组：保持原有格式
+                return "[\n    " . implode(",\n    ", $items) . "\n]";
+            }
+        }
     }
 }
 
@@ -1152,4 +1250,9 @@ if (!function_exists('split_pinyin_tone')) {
         ];
     }
 
+}
+if (!function_exists('pinyin_trim')) {
+    function pinyin_trim($str, $sep=' '){
+        return trim($str, " \n\r\t\v\0".$sep);
+    }
 }
