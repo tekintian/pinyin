@@ -119,6 +119,8 @@ jobs:
           git commit -m "auto: 更新Unihan数据库 ($TIMESTAMP)"
           git push
         fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         
     - name: 更新结果通知
       if: always()
