@@ -28,7 +28,7 @@ jobs:
         tools: composer:v2
 
     - name: Validate composer.json and composer.lock
-      run: composer validate
+      run: composer validate --strict
 
     - name: Cache Composer packages
       id: composer-cache
@@ -43,13 +43,13 @@ jobs:
       run: composer install --prefer-dist --no-progress
 
     - name: Run unit tests
-      run: ./vendor/bin/phpunit phpunit.xml --testsuite Unit --verbose
+      run: ./vendor/bin/phpunit -c phpunit.xml --testsuite Unit --verbose
 
     - name: Run integration tests
-      run: ./vendor/bin/phpunit phpunit.xml --testsuite Integration --verbose
+      run: ./vendor/bin/phpunit -c phpunit.xml --testsuite Integration --verbose
 
     - name: Run performance tests
-      run: ./vendor/bin/phpunit phpunit.xml --testsuite Performance --verbose
+      run: ./vendor/bin/phpunit -c phpunit.xml --testsuite Performance --verbose
 
     - name: Run code style check
       run: composer check-style
@@ -78,7 +78,9 @@ jobs:
 
     - name: Run extended memory leak test
       run: |
-        ./vendor/bin/phpunit tests/Unit/EdgeCaseTest.php --filter testMemoryLeakDetection
+        # 使用正确的命令格式运行特定测试
+        ./vendor/bin/phpunit -c phpunit.xml tests/Unit/EdgeCaseTest.php --filter testMemoryLeakDetection
+        
         # 额外运行长时间内存测试
         php -r '
         require_once "vendor/autoload.php";
@@ -183,7 +185,7 @@ jobs:
     - name: Run tests with coverage
       run: |
         mkdir -p build/logs
-        ./vendor/bin/phpunit phpunit.xml --coverage-clover build/logs/clover.xml
+        ./vendor/bin/phpunit -c phpunit.xml --coverage-clover build/logs/clover.xml
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
