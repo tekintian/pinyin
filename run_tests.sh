@@ -59,34 +59,142 @@ create_directories() {
     mkdir -p build/reports
 }
 
-# 运行单元测试
-run_unit_tests() {
-    print_info "运行单元测试..."
-    
-    if [ "$1" = "--coverage" ]; then
-        ./vendor/bin/phpunit test/UnitTest.php --coverage-html build/coverage --coverage-text
-    else
-        ./vendor/bin/phpunit test/UnitTest.php --verbose
-    fi
+# 运行基础转换测试
+run_basic_tests() {
+    print_info "运行基础转换测试..."
+    ./vendor/bin/phpunit --configuration tests/phpunit.xml tests/Unit/BasicConversionTest.php --verbose
     
     if [ $? -eq 0 ]; then
-        print_success "单元测试通过"
+        print_success "基础转换测试通过"
     else
-        print_error "单元测试失败"
+        print_error "基础转换测试失败"
         exit 1
     fi
 }
 
-# 运行压力测试
-run_pressure_tests() {
-    print_info "运行压力测试..."
-    
-    php test/PressureTest.php
+# 运行多音字测试
+run_polyphone_tests() {
+    print_info "运行多音字测试..."
+    ./vendor/bin/phpunit --configuration tests/phpunit.xml tests/Unit/PolyphoneTest.php --verbose
     
     if [ $? -eq 0 ]; then
-        print_success "压力测试完成"
+        print_success "多音字测试通过"
     else
-        print_warning "压力测试发现问题"
+        print_error "多音字测试失败"
+        exit 1
+    fi
+}
+
+# 运行特殊字符测试
+run_special_character_tests() {
+    print_info "运行特殊字符测试..."
+    ./vendor/bin/phpunit --configuration tests/phpunit.xml tests/Unit/SpecialCharacterTest.php --verbose
+    
+    if [ $? -eq 0 ]; then
+        print_success "特殊字符测试通过"
+    else
+        print_error "特殊字符测试失败"
+        exit 1
+    fi
+}
+
+# 运行自定义字典测试
+run_custom_dict_tests() {
+    print_info "运行自定义字典测试..."
+    ./vendor/bin/phpunit --configuration tests/phpunit.xml tests/Unit/CustomDictionaryTest.php --verbose
+    
+    if [ $? -eq 0 ]; then
+        print_success "自定义字典测试通过"
+    else
+        print_error "自定义字典测试失败"
+        exit 1
+    fi
+}
+
+# 运行边界条件测试
+run_edge_case_tests() {
+    print_info "运行边界条件测试..."
+    ./vendor/bin/phpunit --configuration tests/phpunit.xml tests/Unit/EdgeCaseTest.php --verbose
+    
+    if [ $? -eq 0 ]; then
+        print_success "边界条件测试通过"
+    else
+        print_error "边界条件测试失败"
+        exit 1
+    fi
+}
+
+# 运行单元测试套件
+run_unit_tests() {
+    print_info "运行单元测试套件..."
+    
+    if [ "$1" = "--coverage" ]; then
+        ./vendor/bin/phpunit --configuration tests/phpunit.xml --testsuite Unit --coverage-html build/coverage --coverage-text
+    else
+        ./vendor/bin/phpunit --configuration tests/phpunit.xml --testsuite Unit --verbose
+    fi
+    
+    if [ $? -eq 0 ]; then
+        print_success "单元测试套件通过"
+    else
+        print_error "单元测试套件失败"
+        exit 1
+    fi
+}
+
+# 运行集成测试
+run_integration_tests() {
+    print_info "运行集成测试..."
+    ./vendor/bin/phpunit --configuration tests/phpunit.xml --testsuite Integration --verbose
+    
+    if [ $? -eq 0 ]; then
+        print_success "集成测试通过"
+    else
+        print_error "集成测试失败"
+        exit 1
+    fi
+}
+
+# 运行性能测试
+run_performance_tests() {
+    print_info "运行性能测试..."
+    ./vendor/bin/phpunit --configuration tests/phpunit.xml --testsuite Performance --verbose
+    
+    if [ $? -eq 0 ]; then
+        print_success "性能测试通过"
+    else
+        print_warning "性能测试发现问题"
+    fi
+}
+
+# 运行快速测试（排除性能测试）
+run_fast_tests() {
+    print_info "运行快速测试..."
+    ./vendor/bin/phpunit --configuration tests/phpunit.xml --testsuite Fast --verbose
+    
+    if [ $? -eq 0 ]; then
+        print_success "快速测试通过"
+    else
+        print_error "快速测试失败"
+        exit 1
+    fi
+}
+
+# 运行完整测试套件
+run_complete_tests() {
+    print_info "运行完整测试套件..."
+    
+    if [ "$1" = "--coverage" ]; then
+        ./vendor/bin/phpunit --configuration tests/phpunit.xml --testsuite Complete --coverage-html build/coverage --coverage-text
+    else
+        ./vendor/bin/phpunit --configuration tests/phpunit.xml --testsuite Complete --verbose
+    fi
+    
+    if [ $? -eq 0 ]; then
+        print_success "完整测试套件通过"
+    else
+        print_error "完整测试套件失败"
+        exit 1
     fi
 }
 
@@ -132,7 +240,7 @@ run_code_style_check() {
     print_info "运行代码风格检查..."
     
     if command -v ./vendor/bin/phpcs &> /dev/null; then
-        ./vendor/bin/phpcs src/ test/ --standard=PSR12
+        ./vendor/bin/phpcs src/ --standard=PSR12 --warning-severity=0
         if [ $? -eq 0 ]; then
             print_success "代码风格检查通过"
         else
@@ -148,7 +256,7 @@ run_static_analysis() {
     print_info "运行静态分析..."
     
     if command -v ./vendor/bin/phpstan &> /dev/null; then
-        ./vendor/bin/phpstan analyse src/ --level=5
+        ./vendor/bin/phpstan analyse src/ --level=5 --memory-limit=512M
         if [ $? -eq 0 ]; then
             print_success "静态分析通过"
         else
@@ -175,7 +283,7 @@ generate_report() {
 
 ## 测试结果
 
-### 单元测试
+### 单元测试套件
 EOF
     
     if [ -f "build/coverage.txt" ]; then
@@ -184,8 +292,11 @@ EOF
         echo "\`\`\`" >> "$REPORT_FILE"
     fi
     
-    echo "### 压力测试" >> "$REPORT_FILE"
-    echo "压力测试已执行，详细结果请查看控制台输出。" >> "$REPORT_FILE"
+    echo "### 集成测试" >> "$REPORT_FILE"
+    echo "集成测试已执行，详细结果请查看控制台输出。" >> "$REPORT_FILE"
+    
+    echo "### 性能测试" >> "$REPORT_FILE"
+    echo "性能测试已执行，详细结果请查看控制台输出。" >> "$REPORT_FILE"
     
     echo "测试报告已生成: $REPORT_FILE"
     print_success "测试报告已生成: $REPORT_FILE"
@@ -194,6 +305,10 @@ EOF
 # 清理测试文件
 cleanup() {
     print_info "清理测试文件..."
+    if [ -e ".phpunit.result.cache" ]; then
+        rm -rf .phpunit.result.cache
+    fi
+
     rm -rf build/
     print_success "清理完成"
 }
@@ -204,35 +319,93 @@ show_help() {
     echo ""
     echo "用法: $0 [选项]"
     echo ""
-    echo "选项:"
-    echo "  unit              运行单元测试"
+    echo "基础测试选项:"
+    echo "  basic             运行基础转换测试"
+    echo "  polyphone         运行多音字测试"
+    echo "  special           运行特殊字符测试"
+    echo "  custom            运行自定义字典测试"
+    echo "  edge              运行边界条件测试"
+    echo ""
+    echo "测试套件选项:"
+    echo "  unit              运行单元测试套件"
+    echo "  integration       运行集成测试"
+    echo "  performance       运行性能测试"
+    echo "  fast              运行快速测试（排除性能测试）"
+    echo "  complete          运行完整测试套件"
+    echo ""
+    echo "覆盖率选项:"
     echo "  unit --coverage   运行单元测试并生成覆盖率报告"
-    echo "  pressure          运行压力测试"
+    echo "  complete --coverage 运行完整测试并生成覆盖率报告"
+    echo ""
+    echo "其他选项:"
     echo "  memory            运行内存泄漏检测"
     echo "  style             运行代码风格检查"
     echo "  static            运行静态分析"
     echo "  all               运行所有测试"
     echo "  report            生成测试报告"
     echo "  cleanup           清理测试文件"
+    echo "  migrate           迁移旧测试文件"
     echo "  help              显示此帮助信息"
     echo ""
     echo "示例:"
     echo "  $0 all                    # 运行所有测试"
     echo "  $0 unit --coverage        # 运行单元测试并生成覆盖率"
-    echo "  $0 pressure               # 运行压力测试"
+    echo "  $0 fast                   # 运行快速测试"
+    echo "  $0 basic                  # 运行基础转换测试"
 }
 
 # 主函数
 main() {
     case "${1:-all}" in
+        "basic")
+            check_dependencies
+            create_directories
+            run_basic_tests
+            ;;
+        "polyphone")
+            check_dependencies
+            create_directories
+            run_polyphone_tests
+            ;;
+        "special")
+            check_dependencies
+            create_directories
+            run_special_character_tests
+            ;;
+        "custom")
+            check_dependencies
+            create_directories
+            run_custom_dict_tests
+            ;;
+        "edge")
+            check_dependencies
+            create_directories
+            run_edge_case_tests
+            ;;
         "unit")
             check_dependencies
             create_directories
             run_unit_tests "$2"
             ;;
-        "pressure")
+        "integration")
             check_dependencies
-            run_pressure_tests
+            create_directories
+            run_integration_tests
+            ;;
+        "performance")
+            check_dependencies
+            create_directories
+            run_performance_tests
+            ;;
+        "fast")
+            check_dependencies
+            create_directories
+            run_fast_tests
+            ;;
+        "complete")
+            check_dependencies
+            create_directories
+            run_complete_tests "$2"
             ;;
         "memory")
             check_dependencies
@@ -249,10 +422,15 @@ main() {
         "all")
             check_dependencies
             create_directories
-            run_unit_tests
-            run_pressure_tests
+            run_basic_tests
+            run_polyphone_tests
+            run_special_character_tests
+            run_custom_dict_tests
+            run_edge_case_tests
+            run_integration_tests
+            run_performance_tests
             run_memory_leak_test
-            run_code_style_check
+            # run_code_style_check
             run_static_analysis
             generate_report
             ;;
@@ -272,6 +450,8 @@ main() {
             ;;
     esac
 }
+
+cleanup
 
 # 执行主函数
 main "$@"

@@ -21,3 +21,4 @@ Thumbs.db
 debug_*
 debug/
 /.phpunit.result.cache
+/data/backup

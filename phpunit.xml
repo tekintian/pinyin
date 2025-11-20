@@ -12,7 +12,22 @@
          verbose="true">
     <testsuites>
         <testsuite name="Unit">
-            <directory suffix="Test.php">./test</directory>
+            <directory suffix="Test.php">./tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Integration">
+            <directory suffix="Test.php">./tests/Integration</directory>
+        </testsuite>
+        <testsuite name="Performance">
+            <directory suffix="Test.php">./tests/Performance</directory>
+        </testsuite>
+        <testsuite name="Complete">
+            <directory suffix="Test.php">./tests/Unit</directory>
+            <directory suffix="Test.php">./tests/Integration</directory>
+            <directory suffix="Test.php">./tests/Performance</directory>
+        </testsuite>
+        <testsuite name="Fast">
+            <directory suffix="Test.php">./tests/Unit</directory>
+            <directory suffix="Test.php">./tests/Integration</directory>
         </testsuite>
     </testsuites>
 
@@ -21,8 +36,12 @@
             <directory suffix=".php">./src</directory>
         </include>
         <exclude>
-            <directory>./src/Exception</directory>
-            <directory>./src/Contracts</directory>
+            <directory>./src/tools</directory>
+            <directory>./src/debug</directory>
+            <directory>./src/data</directory>
+            <directory>./unicode</directory>
+            <file>./src/PinyinDictGenerator.php</file>
+            <file>./src/task_runner.php</file>
         </exclude>
         <report>
             <html outputDirectory="build/coverage"/>

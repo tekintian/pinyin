@@ -43,10 +43,13 @@ jobs:
       run: composer install --prefer-dist --no-progress
 
     - name: Run unit tests
-      run: ./vendor/bin/phpunit test/UnitTest.php --verbose
+      run: ./vendor/bin/phpunit tests/phpunit.xml --testsuite Unit --verbose
 
-    - name: Run pressure tests
-      run: php test/PressureTest.php
+    - name: Run integration tests
+      run: ./vendor/bin/phpunit tests/phpunit.xml --testsuite Integration --verbose
+
+    - name: Run performance tests
+      run: ./vendor/bin/phpunit tests/phpunit.xml --testsuite Performance --verbose
 
     - name: Run code style check
       run: composer check-style
@@ -75,7 +78,7 @@ jobs:
 
     - name: Run extended memory leak test
       run: |
-        php test/PressureTest.php
+        ./vendor/bin/phpunit tests/Unit/EdgeCaseTest.php --filter testMemoryLeakDetection
         # 额外运行长时间内存测试
         php -r '
         require_once "vendor/autoload.php";
@@ -155,3 +158,36 @@ jobs:
         echo "批量转换100条数据耗时: " . round($duration, 3) . "秒\n";
         echo "平均每条数据: " . round($duration * 1000 / 100, 2) . "毫秒\n";
         '
+
+  test-coverage:
+    name: Test Coverage
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php-version: ['8.2']
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ matrix.php-version }}
+        coverage: xdebug
+        tools: composer:v2
+
+    - name: Install dependencies
+      run: composer install --prefer-dist --no-progress
+
+    - name: Run tests with coverage
+      run: |
+        mkdir -p build/logs
+        ./vendor/bin/phpunit tests/phpunit.xml --coverage-clover build/logs/clover.xml
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./build/logs/clover.xml
+        flags: unittests
+        name: codecov-umbrella
