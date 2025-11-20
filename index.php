@@ -87,8 +87,10 @@ try {
         $diagnostics['loading_time']['custom'] = microtime(true) - $start_time;
 
         // 测试动态添加的自定义拼音
-        // $converter->addCustomPinyin('测试', ['test']);
+        $converter->addCustomPinyin('测试', ['test']);
         $dynamicCustomResult = $converter->convert('测试');
+        // 测试移除动态添加的自定义拼音
+        $converter->removeCustomPinyin('测试');
 
         $diyStr='7天开发企业级AI客户服务系统Vue3+Go+Gin+K8s技术栈（含源码+部署文档）';
         $diyResult = $converter->convert($diyStr);
@@ -172,7 +174,7 @@ try {
         <center><?php echo htmlspecialchars($slugResult); ?></center>
         <br/>
         <h3>字典文件自定义拼音测试</h3>
-        <?php if ($customResult !== 'hello'): ?>
+        <?php if ($customResult !== 'ni hao'): ?>
             <p class="error">❌ 字典文件自定义拼音未生效: <?php echo htmlspecialchars($customResult); ?></p>
         <?php else: ?>
             <p class="success">✅ 字典文件自定义拼音生效: <?php echo htmlspecialchars($customResult); ?></p>

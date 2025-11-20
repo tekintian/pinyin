@@ -23,3 +23,5 @@ debug/
 /.phpunit.result.cache
 /data/backup
 /unicode
+/tools
+/tests
