@@ -147,18 +147,7 @@ php bin/task_runner.php -m once
 ```
 
 ### Unihan数据管理
-
-```php
-use tekintian\pinyin\unicode\UnihanDataManager;
-
-$manager = new UnihanDataManager();
-
-// 更新Unihan数据
-$updated = $manager->updateData();
-
-// 生成数据报告
-$report = $manager->generateReport();
-```
+参见main分支的readme.md
 
 ### 特殊字符处理
 
@@ -194,12 +183,7 @@ $result = $converter->convert('你好$世界', ' ', false, [
 **总计**: 超过 60,000 个汉字的完整拼音覆盖
 
 ## 📚 详细文档
-
-- [📖 项目架构和使用指南](docs/项目架构和使用指南.md) - 完整的项目架构说明和使用方法
-- [🔧 工具使用手册](docs/工具使用手册.md) - 所有工具的使用方法和示例
-- [📊 数据字典说明](docs/数据字典说明.md) - 字典系统的详细说明
-- [🔄 后台任务管理](docs/BackgroundTaskManager.md) - 后台任务系统的使用指南
-- [🌐 Unihan数据处理](docs/UnihanDataManager.md) - Unihan数据管理工具说明
+参见main分支的docs目录
 
 ## ⚙️ 配置选项
 
@@ -223,68 +207,10 @@ $config = [
 $pinyinConverter = new PinyinConverter($config);
 ```
 
-## 🧪 测试
-
-本项目所有测试通过 `run_tests.sh` 脚本统一管理，支持多种测试类型和参数选项：
-
-```bash
-# 基本使用 - 运行所有测试
-./run_tests.sh
-
-./run_tests.sh all                    # 运行所有测试
-./run_tests.sh unit --coverage        # 运行单元测试并生成覆盖率
-./run_tests.sh fast                   # 运行快速测试
-./run_tests.sh basic                  # 运行基础转换测试
-
-```
-
-### 测试类型说明
-
-该测试脚本包含以下测试类型：
-- **基础转换测试** - 验证常用汉字和词组的拼音转换正确性
-- **多音字测试** - 测试多音字在不同上下文中的正确识别
-- **特殊字符测试** - 验证各种特殊字符处理模式的正确性
-- **自定义字典测试** - 测试自定义映射规则的生效情况
-- **边界条件测试** - 测试空字符串、超长字符串等边界情况
-
-### 测试报告
-
-运行测试后，将生成 Markdown 格式的测试报告，包含详细的测试结果统计和潜在问题分析。
-
-### 其他测试方式
-
-```bash
-# 快速测试
-php tools/quick_pinyin_test.php
-
-# 通过Composer运行测试
-composer test
-```
-
-详细测试文档请参考 [测试指南.md](docs/测试指南.md)
-
-
-## 🔄 开发计划
-
-✅ **已完成功能**
-- 基础汉字转拼音功能
-- 多音字处理
-- 自学习字典系统
-- 后台任务管理
-- Unihan数据集成
-- 完整的工具集
-
-🔜 **计划功能**
-- 更智能的多音字上下文识别
-- 分布式任务处理支持
-- Web界面管理工具
-- 更多拼音数据源集成
-
 ## 🤝 贡献指南
 
 欢迎贡献代码！请阅读：
 - [贡献指南](CONTRIBUTING.md)
-- [代码规范](docs/代码规范.md)
 - [版本历史](CHANGELOG.md)
 
 ## 📄 许可证
