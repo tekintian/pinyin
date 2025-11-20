@@ -135,6 +135,17 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         
+    - name: 设置发布版本信息
+      if: steps.check_update.outputs.age_days >= 7 || github.event.inputs.force_update == 'true'
+      id: set_version
+      run: |
+        # 使用上海时区生成版本号，格式：年月日时分
+        VERSION=$(TZ='Asia/Shanghai' date +%Y%m%d%H%M)
+        TIMESTAMP=$(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S CST')
+        echo "RELEASE_VERSION=$VERSION" >> $GITHUB_ENV
+        echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
+        echo "生成版本号: $VERSION"
+        
     - name: 打包Unihan字典文件
       if: steps.check_update.outputs.age_days >= 7 || github.event.inputs.force_update == 'true'
       run: |
@@ -152,11 +163,11 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: unihan-${{ github.run_id }}-${{ github.run_attempt }}
-        release_name: Unihan数据库更新 ${{ env.RELEASE_VERSION || format('{0}', now()) }}
+        tag_name: unihan-${{ env.RELEASE_VERSION }}
+        release_name: Unihan数据库更新 ${{ env.RELEASE_VERSION }}
         body: |
           ## Unihan数据库自动更新
-          - 更新时间: ${{ env.TIMESTAMP || format('{0}', now()) }}
+          - 更新时间: ${{ env.TIMESTAMP }}
           - 包含文件: $(find release_artifacts -type f | wc -l) 个文件
           - 字典文件数: $(find data/unihan -name '*.php' | wc -l) 个
         draft: false
@@ -189,10 +200,10 @@ jobs:
       run: |
         if [ "${{ steps.check_update.outputs.age_days }}" -ge 7 ] || [ "${{ github.event.inputs.force_update }}" = "true" ]; then
           echo "✅ Unihan数据库更新完成"
-          echo "📊 更新时间: $(date)"
+          echo "📊 更新时间: $(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S CST')"
           echo "📁 生成文件: $(find data/unihan/ -name '*.php' 2>/dev/null | wc -l) 个"
           if [ "${{ steps.create_release.outputs.id }}" != "" ]; then
-            echo "🚀 发布版本: https://github.com/${{ github.repository }}/releases/tag/unihan-${{ github.run_id }}-${{ github.run_attempt }}"
+            echo "🚀 发布版本: https://github.com/${{ github.repository }}/releases/tag/unihan-${{ env.RELEASE_VERSION }}"
           fi
         else
           echo "ℹ️ 数据库较新，无需更新"
