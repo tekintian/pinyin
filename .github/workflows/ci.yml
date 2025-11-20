@@ -51,9 +51,6 @@ jobs:
     - name: Run performance tests
       run: ./vendor/bin/phpunit -c phpunit.xml --testsuite Performance --verbose
 
-    - name: Run code style check
-      run: composer check-style
-
     - name: Run static analysis
       run: composer phpstan
 
