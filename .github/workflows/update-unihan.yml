@@ -84,7 +84,7 @@ jobs:
         
         # 运行单元测试
         if [ -f "phpunit.xml" ]; then
-          ./vendor/bin/phpunit --testdox --no-coverage test/UnitTest.php || echo "单元测试有警告，但继续执行"
+          ./vendor/bin/phpunit -c phpunit.xml --testsuite Unit --verbose || echo "单元测试有警告，但继续执行"
         fi
         
         # 基本功能测试
