@@ -35,6 +35,11 @@
     "squizlabs/php_codesniffer": "^3.13",
     "phpstan/phpstan": "^1.12"
   },
+  "extra": {
+      "branch-alias": {
+        "dev-prod": "1.x-dev"
+      }
+  },
   "scripts": {
     "test": "phpunit",
     "check-style": "phpcs src tests",
