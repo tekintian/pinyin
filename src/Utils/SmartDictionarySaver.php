@@ -2,6 +2,8 @@
 
 namespace tekintian\pinyin\Utils;
 
+use tekintian\pinyin\Exception\PinyinException;
+
 /**
  * 智能字典保存器
  * 提供优雅高效的字典文件保存方案
@@ -295,9 +297,9 @@ class SmartDictionarySaver
                 'file_size' => filesize($filePath),
                 'last_modified' => filemtime($filePath)
             ];
-        } catch (ParseError $e) {
+        } catch (PinyinException $e) {
             $result['error'] = 'PHP语法错误: ' . $e->getMessage();
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $result['error'] = '加载错误: ' . $e->getMessage();
         }
 

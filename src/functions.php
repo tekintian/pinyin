@@ -1,4 +1,5 @@
 <?php
+
 /**
  * 拼音转换工具全局函数
  * 包含全局使用的各种拼音转换的独立函数, 文件操作函数,  各种辅助函数，如调试输出、日志记录、性能监控等。
@@ -9,8 +10,10 @@
  * @date 2025-11-01 16:00:00
  * @version 1.0.0
  */
+
 use tekintian\pinyin\Exception\PinyinException;
 use tekintian\pinyin\Utils\PinyinConstants;
+
 // 添加PHP 7.2兼容的str_contains函数实现
 if (!function_exists('str_contains')) {
     /**
@@ -22,8 +25,8 @@ if (!function_exists('str_contains')) {
     function str_contains(string $haystack, string $needle): bool
     {
         return $needle === '' || mb_strpos($haystack, $needle) !== false;
-    } 
-} 
+    }
+}
 if (!function_exists('require_file')) {
     /**
      * 引入PHP文件，提供更好的错误处理和类型安全
@@ -40,18 +43,18 @@ if (!function_exists('require_file')) {
         // 启用缓存且文件已在缓存中
         if ($enableCache && isset($fileCache[$file])) {
             return $fileCache[$file];
-        } 
+        }
         // 基本验证：只检查是否为字符串且不为空
         if (!is_string($file) || empty($file)) {
             trigger_error("Invalid file path: empty or not a string", E_USER_WARNING);
             return $default;
-        } 
+        }
         // 移除严格的目录遍历检查，允许相对路径
         // 对于这个项目，我们需要允许使用../的相对路径
         // 检查文件是否存在
         if (!is_file_exists($file)) {
             return $default;
-        } 
+        }
         try {
             // 使用include替代require可以捕获错误
             // 使用输出缓冲捕获可能的意外输出
@@ -61,17 +64,17 @@ if (!function_exists('require_file')) {
             // 缓存结果
             if ($enableCache) {
                 $fileCache[$file] = $result;
-            } 
+            }
             return $result;
         } catch (Throwable $e) {
             // 记录错误
             if (function_exists('pinyin_debug')) {
                 pinyin_debug("Failed to require file: {$file}, Error: {$e->getMessage()}", 'error');
-            } 
+            }
             return $default;
-        } 
-    } 
-} 
+        }
+    }
+}
 if (!function_exists('pinyin_debug')) {
     /**
      * 调试输出函数
@@ -94,16 +97,16 @@ if (!function_exists('pinyin_debug')) {
                     break;
                 default:
                     $prefix = 'ℹ️ ';
-            } 
+            }
             // 如果脚本运行模式为 cli直接echo输出,否则使用 errlog记录日志
             if (PHP_SAPI === 'cli') {
                 echo $prefix . $message . "\n";
             } else {
                 error_log($prefix . $message);
-            } 
-        } 
-    } 
-} 
+            }
+        }
+    }
+}
 if (!function_exists('is_debug_enabled')) {
     /**
      * 检查是否启用调试模式
@@ -112,8 +115,8 @@ if (!function_exists('is_debug_enabled')) {
     function is_debug_enabled()
     {
         return getenv('APP_DEBUG') === 'true';
-    } 
-} 
+    }
+}
 if (!function_exists('log_file')) {
     /**
      * 记录调试日志到文件
@@ -129,10 +132,10 @@ if (!function_exists('log_file')) {
                 file_put_contents($logFile, $logMessage, FILE_APPEND | LOCK_EX);
             } else {
                 echo $logMessage;
-            } 
-        } 
-    } 
-} 
+            }
+        }
+    }
+}
 // ==================== 文件操作函数 ====================
 if (!function_exists('is_file_exists')) {
     /**
@@ -143,8 +146,8 @@ if (!function_exists('is_file_exists')) {
     function is_file_exists($file)
     {
         return file_exists($file) && is_file($file);
-    } 
-} 
+    }
+}
 if (!function_exists('read_file_data')) {
     /**
      * 读取文件内容
@@ -155,10 +158,10 @@ if (!function_exists('read_file_data')) {
     {
         if (!is_file_exists($file)) {
             return '';
-        } 
+        }
         return file_get_contents($file);
-    } 
-} 
+    }
+}
 if (!function_exists('write_to_file')) {
     /**
      * 写入文件内容
@@ -172,11 +175,11 @@ if (!function_exists('write_to_file')) {
         $dir = dirname($file);
         if (!is_dir($dir)) {
             create_dir($dir);
-        } 
+        }
         $flags = $append ? FILE_APPEND | LOCK_EX : LOCK_EX;
         return file_put_contents($file, $content, $flags) !== false;
-    } 
-} 
+    }
+}
 if (!function_exists('create_dir')) {
     /**
      * 创建目录
@@ -188,14 +191,14 @@ if (!function_exists('create_dir')) {
     {
         if (is_dir($dir)) {
             return true;
-        } 
+        }
         $parent = dirname($dir);
         if (!is_dir($parent)) {
             create_dir($parent, $mode);
-        } 
+        }
         return mkdir($dir, $mode, true);
-    } 
-} 
+    }
+}
 if (!function_exists('copy_file')) {
     /**
      * 复制单个文件
@@ -210,19 +213,19 @@ if (!function_exists('copy_file')) {
         // 确保源文件存在
         if (!is_file($sourcePath)) {
             throw new PinyinException("Source file does not exist: {$sourcePath}", PinyinException::ERROR_FILE_NOT_FOUND);
-        } 
+        }
         // 确保目标目录存在
         $targetDir = dirname($destinationPath);
         if (!is_dir($targetDir)) {
             create_dir($targetDir);
-        } 
+        }
         // 复制文件
         if (!@copy($sourcePath, $destinationPath)) {
             throw new PinyinException("Failed to copy file: {$sourcePath} to {$destinationPath}", PinyinException::ERROR_FILE_NOT_FOUND);
-        } 
+        }
         return true;
-    } 
-} 
+    }
+}
 if (!function_exists('get_file_mtime')) {
     /**
      * 获取文件修改时间
@@ -234,10 +237,10 @@ if (!function_exists('get_file_mtime')) {
     {
         if (!is_file($file)) {
             return null;
-        } 
+        }
         return filemtime($file);
-    } 
-} 
+    }
+}
 if (!function_exists('copy_dict')) {
     /**
      * 递归复制项目根目录下的data文件夹到用户指定目录
@@ -255,46 +258,46 @@ if (!function_exists('copy_dict')) {
         $realDataDir = realpath($dataDir);
         if ($realDataDir === false) {
             throw new PinyinException("Failed to access data directory: {$dataDir}", PinyinException::ERROR_FILE_NOT_FOUND);
-        } 
+        }
         // 验证源目录是否存在且是目录
         if (!is_dir($dataDir)) {
             throw new PinyinException("Source data directory does not exist or is not a directory: {$dataDir}", PinyinException::ERROR_FILE_NOT_FOUND);
-        } 
+        }
         // 确保目标目录存在
         if (!is_dir($dst)) {
             create_dir($dst);
-        } 
+        }
         // 获取源目录中的所有文件和子目录
         $files = scandir($dataDir);
         if ($files === false) {
             throw new PinyinException("Failed to read directory contents: {$dataDir}", PinyinException::ERROR_FILE_NOT_FOUND);
-        } 
+        }
         // 递归复制文件和目录
         foreach ($files as $file) {
             if ($file === '.' || $file === '..') {
                 continue;
-            } 
+            }
             $sourcePath = $dataDir . '/' . $file;
             $destinationPath = $dst . '/' . $file;
             if (is_dir($sourcePath)) {
                 // 如果是目录，递归创建并复制
                 if (!is_dir($destinationPath)) {
                     create_dir($destinationPath);
-                } 
+                }
                 // 使用辅助函数递归复制子目录内容
                 if (!copy_directory($sourcePath, $destinationPath)) {
                     return false;
-                } 
+                }
             } else {
                 // 如果是文件，直接复制
                 if (!@copy($sourcePath, $destinationPath)) {
                     throw new PinyinException("Failed to copy file: {$sourcePath} to {$destinationPath}", PinyinException::ERROR_FILE_NOT_FOUND);
-                } 
-            } 
-        } 
+                }
+            }
+        }
         return true;
-    } 
-} 
+    }
+}
 if (!function_exists('copy_directory')) {
     /**
      * 辅助方法：递归复制目录内容
@@ -310,31 +313,31 @@ if (!function_exists('copy_directory')) {
         $files = scandir($src);
         if ($files === false) {
             throw new PinyinException("Failed to read directory contents: {$src}", PinyinException::ERROR_FILE_NOT_FOUND);
-        } 
+        }
         foreach ($files as $file) {
             if ($file === '.' || $file === '..') {
                 continue;
-            } 
+            }
             $sourcePath = $src . '/' . $file;
             $destinationPath = $dst . '/' . $file;
             if (is_dir($sourcePath)) {
                 // 如果是目录，递归创建并复制
                 if (!is_dir($destinationPath)) {
                     create_dir($destinationPath);
-                } 
+                }
                 if (!copy_directory($sourcePath, $destinationPath)) {
                     return false;
-                } 
+                }
             } else {
                 // 如果是文件，直接复制
                 if (!@copy($sourcePath, $destinationPath)) {
                     throw new PinyinException("Failed to copy file: {$sourcePath} to {$destinationPath}", PinyinException::ERROR_FILE_NOT_FOUND);
-                } 
-            } 
-        } 
+                }
+            }
+        }
         return true;
-    } 
-} 
+    }
+}
 if (!function_exists('delete_file')) {
     /**
      * 删除文件
@@ -346,10 +349,10 @@ if (!function_exists('delete_file')) {
     {
         if (!is_file($file)) {
             return true;
-        } 
+        }
         return @unlink($file);
-    } 
-} 
+    }
+}
 if (!function_exists('read_json_file')) {
     /**
      * 读取JSON文件并解析为数组
@@ -367,10 +370,10 @@ if (!function_exists('read_json_file')) {
                 "Failed to parse JSON file: {$file}, error: " . json_last_error_msg(),
                 PinyinException::ERROR_INVALID_INPUT
             );
-        } 
+        }
         return $data;
-    } 
-} 
+    }
+}
 if (!function_exists('write_json_file')) {
     /**
      * 将数组数据写入JSON文件
@@ -389,10 +392,10 @@ if (!function_exists('write_json_file')) {
                 "Failed to encode data to JSON, error: " . json_last_error_msg(),
                 PinyinException::ERROR_INVALID_INPUT
             );
-        } 
+        }
         return write_to_file($file, $content);
-    } 
-} 
+    }
+}
 // ==================== 拼音处理函数 ====================
 if (!function_exists('convert_to_number_tone')) {
     /**
@@ -413,8 +416,8 @@ if (!function_exists('convert_to_number_tone')) {
             'ü' => 'v',
         ];
         return strtr($pinyin, $toneMap);
-    } 
-} 
+    }
+}
 if (!function_exists('convert_from_number_tone')) {
     /**
      * 将数字声调格式转换为带声调符号的拼音（支持单/多元音组合，兼容v代替ü，支持轻声）
@@ -428,7 +431,7 @@ if (!function_exists('convert_from_number_tone')) {
         // 空值或无数字声调，直接返回
         if (empty($pinyin) || !preg_match('/[1-5]/', $pinyin)) {
             return $pinyin;
-        } 
+        }
         // 扩展映射表：覆盖单元音、多元音组合、v/ü、轻声（按"长匹配优先"原则排序）
         $toneMap = [
             // 多元音组合（长度3）
@@ -466,8 +469,8 @@ if (!function_exists('convert_from_number_tone')) {
         });
         // 执行替换（strtr会按最长匹配优先原则替换）
         return strtr($pinyin, $toneMap);
-    } 
-} 
+    }
+}
 if (!function_exists('format_pinyin_array')) {
     /**
      * 格式化拼音数组（区分单字和多字空格）
@@ -480,7 +483,7 @@ if (!function_exists('format_pinyin_array')) {
         foreach ($data as $char => $pinyin) {
             if (empty($char)) {
                 continue;
-            } 
+            }
             $wordLen = mb_strlen($char, 'UTF-8');
             $pinyinArr = is_array($pinyin) ? $pinyin : [$pinyin];
             $pinyinArr = array_map(function ($item) use ($wordLen) {
@@ -489,21 +492,21 @@ if (!function_exists('format_pinyin_array')) {
                 return pinyin_process_spaces($trimmed, $wordLen === 1);
             }, $pinyinArr);
             $formatted[$char] = array_filter($pinyinArr) ?: [$char];
-        } 
+        }
         return $formatted;
-    } 
-} 
+    }
+}
 if (!function_exists('remove_tone')) {
     /**
      * 移除拼音中的声调
-     * @param string $pinyin 带声调的拼音
-     * @return string 无声调的拼音
+     * @param string|array $pinyin 带声调的拼音
+     * @return string|array 无声调的拼音
      */
     function remove_tone($pinyin)
     {
         if (is_array($pinyin)) {
             return array_map('remove_tone', $pinyin);
-        } 
+        }
         // 声调映射表
         $toneMap = [
             'ā' => 'a', 'á' => 'a', 'ǎ' => 'a', 'à' => 'a',
@@ -515,8 +518,8 @@ if (!function_exists('remove_tone')) {
             'ü' => 'v',
         ];
         return strtr($pinyin, $toneMap);
-    } 
-} 
+    }
+}
 if (!function_exists('is_valid_pinyin')) {
     /**
      * 验证拼音格式是否有效
@@ -528,16 +531,16 @@ if (!function_exists('is_valid_pinyin')) {
     {
         if (mb_strlen($pinyin) === 0) {
             return false;
-        } 
+        }
         // 基本拼音格式验证
         $basicValid = preg_match('/^[a-zāáǎàōóǒòēéěèīíǐìūúǔùüǖǘǚǜ]+$/i', $pinyin);
         if (!$strict || !$basicValid) {
             return $basicValid;
-        } 
+        }
         // 严格验证：检查声调组合规则
         return validate_pinyin_tone_rules($pinyin);
-    } 
-} 
+    }
+}
 if (!function_exists('pinyin_batch_process')) {
 /**
  * 批量处理拼音数组
@@ -549,8 +552,8 @@ if (!function_exists('pinyin_batch_process')) {
     function pinyin_batch_process($pinyinArray, $processor)
     {
         return array_map($processor, $pinyinArray);
-    } 
-} 
+    }
+}
 if (!function_exists('pinyin_sort')) {
     /**
      * 拼音排序（按字母顺序）
@@ -566,8 +569,8 @@ if (!function_exists('pinyin_sort')) {
         : $pinyinArray;
         array_multisort($processedArray, $pinyinArray);
         return $pinyinArray;
-    } 
-} 
+    }
+}
 if (!function_exists('check_pinyin_format_consistency')) {
     /**
      * 检查拼音格式一致性
@@ -587,15 +590,15 @@ if (!function_exists('check_pinyin_format_consistency')) {
             $hasSpace = str_contains($pinyin, ' ');
             if ($hasSpace !== $firstHasSpace) {
                 $result['consistent'] = false;
-                $result['suggestions'] = array_map(function ($p) use ($withTone) {
+                $result['suggestions'] = array_map(function ($p) {
                     return trim($p); // 简化处理，直接返回清理后的拼音
                 }, $pinyinArray);
                 break;
-            } 
-        } 
+            }
+        }
         return $result;
-    } 
-} 
+    }
+}
 if (!function_exists('validate_pinyin_tone_rules')) {
     /**
      * 验证拼音声调组合规则
@@ -612,12 +615,12 @@ if (!function_exists('validate_pinyin_tone_rules')) {
         foreach ($toneChars as $toneChar) {
             if (mb_substr_count($pinyin, $toneChar) > 0) {
                 $toneCount++;
-            } 
-        } 
+            }
+        }
         // 一个拼音最多只能有一个声调符号
         return $toneCount <= 1;
-    } 
-} 
+    }
+}
 if (!function_exists('pinyin_validate')) {
     /**
      * 验证单个拼音的有效性
@@ -632,31 +635,31 @@ if (!function_exists('pinyin_validate')) {
         if (empty(trim($pinyin))) {
             $issues[] = '拼音为空';
             return $issues;
-        } 
+        }
         // 使用 is_valid_pinyin 进行更严格的验证
         if (!is_valid_pinyin($pinyin, true)) {
             $issues[] = '拼音格式无效或不符合声调规则';
-        } 
+        }
         // 检查声调一致性
         if ($withTone) {
             // 应该包含声调符号
             if (!preg_match('/[āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜü]/u', $pinyin)) {
                 $issues[] = '带声调模式下缺少声调符号';
-            } 
+            }
         } else {
             // 不应该包含声调符号
             if (preg_match('/[āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜü]/u', $pinyin)) {
                 $issues[] = '无声调模式下包含声调符号';
-            } 
-        } 
+            }
+        }
         // 检查空格使用（单字不应该有空格，多字应该有空格）
         $wordLen = mb_strlen($pinyin, 'UTF-8');
         if ($wordLen === 1 && str_contains($pinyin, ' ')) {
             $issues[] = '单字拼音不应包含空格';
-        } 
+        }
         return $issues;
-    } 
-} 
+    }
+}
 if (!function_exists('pinyin_format_array')) {
     /**
      * 格式化拼音数组
@@ -667,18 +670,18 @@ if (!function_exists('pinyin_format_array')) {
     {
         if (!is_array($data)) {
             return [];
-        } 
+        }
         $result = [];
         foreach ($data as $key => $value) {
             if (is_array($value)) {
                 $result[$key] = array_map('trim', $value);
             } else {
                 $result[$key] = trim($value);
-            } 
-        } 
+            }
+        }
         return $result;
-    } 
-} 
+    }
+}
 if (!function_exists('pinyin_export_polyphone_rules')) {
     /**
      * 专门处理多音字规则数组的格式化导出
@@ -691,10 +694,10 @@ if (!function_exists('pinyin_export_polyphone_rules')) {
         // 安全检查
         if (!is_array($array)) {
             return '[]';
-        } 
+        }
         if (empty($array)) {
             return '[]';
-        } 
+        }
         $indent = str_repeat('    ', $indentLevel);
         $nextIndent = str_repeat('    ', $indentLevel + 1);
         $result = "[
@@ -711,51 +714,55 @@ if (!function_exists('pinyin_export_polyphone_rules')) {
                             // 安全处理值
                             $vStr = is_string($v) ? str_replace("'", "\\'", $v) : (string)$v;
                             $ruleItems[] = "'$k' => '$vStr'";
-                        } 
+                        }
                         $ruleStr = implode(', ', $ruleItems);
                         $result .= $nextIndent . "    [$ruleStr],\n";
-                    } 
-                } 
-            } 
+                    }
+                }
+            }
             $result = rtrim($result, ",\n") . "\n" . $nextIndent . "],\n";
-        } 
+        }
         return rtrim($result, ",\n") . "\n" . $indent . "]";
-    } 
-} 
+    }
+}
 if (!function_exists('pinyin_compact_array_export')) {
     function pinyin_compact_array_export($array, $indentLevel = 0)
     {
         // 首先检查输入是否为数组
         if (!is_array($array)) {
             return '[]';
-        } 
+        }
         if (empty($array)) {
             return '[]';
-        } 
+        }
         $isAssoc = array_keys($array) !== range(0, count($array) - 1);
         $indent = str_repeat('    ', $indentLevel);
+
         // 处理关联数组 - 统一为自学习字典格式
         if ($isAssoc) {
-            $result = $indent . "[\n";
+            $result = $indent . "[
+    ";
             foreach ($array as $key => $value) {
                 $keyStr = "'" . str_replace("'", "\\'", $key) . "' => ";
+
                 // 对于值的处理保持一致
                 if (is_array($value)) {
-                    // 检查是否为简单拼音数组（优化：更宽松的验证）
-                    $isSimplePinyinArray = true;
+                    // 检查是否为简单字符串数组（更宽松的验证，允许更多字符）
+                    $isSimpleStringArray = true;
                     foreach ($value as $v) {
                         if (!is_string($v)) {
-                            $isSimplePinyinArray = false;
+                            $isSimpleStringArray = false;
                             break;
-                        } 
-                        // 更宽松的拼音验证，允许空格和更广泛的字符
-                        if (!preg_match('/^[a-zāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜü\s]+$/ui', $v)) {
-                            $isSimplePinyinArray = false;
+                        }
+                        // 允许数字、字母、声调、空格和下划线等常见字符
+                        if (!preg_match('/^[a-z0-9āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜü\s_]+$/ui', $v)) {
+                            $isSimpleStringArray = false;
                             break;
-                        } 
-                    } 
-                    // 对于简单拼音数组，始终使用紧凑格式（单行）
-                    if ($isSimplePinyinArray) {
+                        }
+                    }
+
+                    // 对于简单字符串数组，始终使用紧凑格式（单行）
+                    if ($isSimpleStringArray) {
                         $values = array_map(function ($v) {
                             return "'" . str_replace("'", "\\'", $v) . "'";
                         }, $value);
@@ -763,26 +770,29 @@ if (!function_exists('pinyin_compact_array_export')) {
                     } else {
                         // 对于复杂数组，递归处理
                         $valueStr = pinyin_compact_array_export($value, $indentLevel + 1);
-                    } 
+                    }
                 } else {
                     // 安全处理非字符串值
                     $valueStr = is_string($value) ? "'" . str_replace("'", "\\'", $value) . "'" : var_export($value, true);
-                } 
+                }
+
                 // 保持一致的缩进格式
                 $result .= $indent . "    " . $keyStr . $valueStr . ",\n";
-            } 
+            }
             return rtrim($result, ",\n") . "\n" . $indent . "]";
         } else {
             // 处理索引数组
-            $isSimplePinyin = true;
+            $isSimpleStringArray = true;
             foreach ($array as $value) {
-                if (!is_string($value) || !preg_match('/^[a-zāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜü\s]+$/ui', $value)) {
-                    $isSimplePinyin = false;
+                // 只需要检查是否都是字符串，不再严格限制内容
+                if (!is_string($value)) {
+                    $isSimpleStringArray = false;
                     break;
-                } 
-            } 
-            if ($isSimplePinyin) {
-                // 简单拼音数组的紧凑格式
+                }
+            }
+
+            if ($isSimpleStringArray) {
+                // 简单字符串数组的紧凑格式
                 $values = array_map(function ($v) {
                     return "'" . str_replace("'", "\\'", $v) . "'";
                 }, $array);
@@ -790,21 +800,22 @@ if (!function_exists('pinyin_compact_array_export')) {
             } else {
                 // 普通索引数组
                 $nextIndent = str_repeat('    ', $indentLevel + 1);
-                $result = $indent . "[\n";
+                $result = $indent . "[
+    ";
                 foreach ($array as $value) {
                     if (is_array($value)) {
                         $valueStr = pinyin_compact_array_export($value, $indentLevel + 1);
                     } else {
                         // 安全处理非字符串值
                         $valueStr = is_string($value) ? "'" . str_replace("'", "\\'", $value) . "'" : var_export($value, true);
-                    } 
+                    }
                     $result .= $nextIndent . $valueStr . ",\n";
-                } 
+                }
                 return rtrim($result, ",\n") . "\n" . $indent . "]";
-            } 
-        } 
-    } 
-} 
+            }
+        }
+    }
+}
 if (!function_exists('pinyin_export_not_found_chars')) {
     /**
      * 专门导出 not_found_chars.php 格式的数组（每个字单独一行）
@@ -816,10 +827,10 @@ if (!function_exists('pinyin_export_not_found_chars')) {
         // 安全检查
         if (!is_array($chars)) {
             return '[]';
-        } 
+        }
         if (empty($chars)) {
             return '[]';
-        } 
+        }
         $result = "[";
         $first = true;
         foreach ($chars as $char) {
@@ -828,13 +839,13 @@ if (!function_exists('pinyin_export_not_found_chars')) {
                 $first = false;
             } else {
                 $result .= ",\n    ";
-            } 
+            }
             $result .= "'" . str_replace("'", "\\'", $char) . "'";
-        } 
+        }
         $result .= "\n];";
         return $result;
-    } 
-} 
+    }
+}
 if (!function_exists('pinyin_similarity')) {
     /**
      * 拼音相似度比较
@@ -849,18 +860,18 @@ if (!function_exists('pinyin_similarity')) {
         if ($ignoreTone) {
             $pinyin1 = remove_tone($pinyin1);
             $pinyin2 = remove_tone($pinyin2);
-        } 
+        }
         $len1 = mb_strlen($pinyin1);
         $len2 = mb_strlen($pinyin2);
         if ($len1 === 0 || $len2 === 0) {
             return 0.0;
-        } 
+        }
         // 简单的编辑距离相似度计算
         $maxLen = max($len1, $len2);
         $distance = levenshtein($pinyin1, $pinyin2);
         return 1 - ($distance / $maxLen);
-    } 
-} 
+    }
+}
 if (!function_exists('pinyin_normalize_format')) {
     /**
      * 标准化拼音格式
@@ -876,14 +887,14 @@ if (!function_exists('pinyin_normalize_format')) {
         // 处理声调
         if (!$withTone) {
             $pinyin = remove_tone($pinyin);
-        } 
+        }
         // 标准化空格（多个空格合并为一个）
         $pinyin = preg_replace('/\s+/', ' ', $pinyin);
         // 统一大小写（小写）
         $pinyin = mb_strtolower($pinyin);
         return $pinyin;
-    } 
-} 
+    }
+}
 if (!function_exists('pinyin_parse_options')) {
     /**
      * 解析拼音选项
@@ -901,17 +912,17 @@ if (!function_exists('pinyin_parse_options')) {
                     $result = array_merge($result, explode(' ', $item));
                 } else {
                     $result[] = $item;
-                } 
-            } 
+                }
+            }
             return array_unique(array_filter($result));
-        } 
+        }
         if (is_string($pinyin)) {
             // 如果是字符串，按空格拆分
             return array_unique(array_filter(explode(' ', $pinyin)));
-        } 
+        }
         return [$pinyin];
-    } 
-} 
+    }
+}
 if (!function_exists('get_first_pinyin')) {
     /**
      * 获取拼音数组中的第一个有效拼音
@@ -924,11 +935,11 @@ if (!function_exists('get_first_pinyin')) {
         foreach ($pinyinArray as $pinyin) {
             if (!empty(trim($pinyin))) {
                 return $pinyin;
-            } 
-        } 
+            }
+        }
         return '';
-    } 
-} 
+    }
+}
 if (!function_exists('chinese_number_to_arabic')) {
     /**
      * 将字符串中的中文数字（含大小写、单位、特殊数字）转换为阿拉伯数字
@@ -992,35 +1003,33 @@ if (!function_exists('chinese_number_to_arabic')) {
                         if ($val >= 10000) {
                             $total += $current;
                             $current = 0;
-                        } 
+                        }
                     } else {
                         // 遇到数字（零-九/壹-玖，值<10）
                         $current += $val; // 累加临时值（如“一百二”→1×100 + 2=102）
-                    } 
-                } 
+                    }
+                }
                 $arabicNum = (string) ($total + $current); // 总结果 = 已结算段位 + 剩余临时值
-            } 
-            // 2. 处理连续纯数字（长度≥2，如“一二三”→123，“一伍壹九”→1519）
-            elseif (mb_strlen($chineseNum, 'UTF-8') >= 2) {
+            } elseif (mb_strlen($chineseNum, 'UTF-8') >= 2) {
+                // 2. 处理连续纯数字（长度≥2，如“一二三”→123，“一伍壹九”→1519）
                 $arabicStr = '';
                 // 逐个字符转换并拼接（如“一伍壹九”→“1”+“5”+“1”+“9”=“1519”）
                 for ($i = 0; $i < mb_strlen($chineseNum, 'UTF-8'); $i++) {
                     $char = mb_substr($chineseNum, $i, 1, 'UTF-8');
                     $arabicStr .= $numMap[$char];
-                } 
+                }
                 $arabicNum = $arabicStr;
-            } 
-            // 3. 处理特殊数字（廿、卅、卌）和单个数字（如“一”→1，“伍”→5）
-            else {
+            } else {
+                // 3. 处理特殊数字（廿、卅、卌）和单个数字（如“一”→1，“伍”→5）
                 $arabicNum = (string) $numMap[$chineseNum];
-            } 
+            }
             return $arabicNum;
         }, $str);
         // 步骤3：清理多余空格（合并连续空格），并去除首尾空格
         $result = preg_replace('/\s+/', ' ', $result); // 连续空格→单个空格
         return trim($result); // 去除首尾空格
-    } 
-} 
+    }
+}
 if (!function_exists('pinyin_process_spaces')) {
     /**
      * 处理拼音中的空格
@@ -1033,12 +1042,12 @@ if (!function_exists('pinyin_process_spaces')) {
     {
         if ($removeAll) {
             return str_replace(' ', '', $pinyin);
-        } 
+        }
         // 保留单词间的单个空格，移除多余空格
         $pinyin = preg_replace('/\s+/', ' ', $pinyin);
         return trim($pinyin);
-    } 
-} 
+    }
+}
 if (!function_exists('clean_pinyin')) {
     /**
      * 清理拼音字符串
@@ -1051,10 +1060,10 @@ if (!function_exists('clean_pinyin')) {
     {
         if ($removeAllSpaces) {
             return pinyin_process_spaces($pinyin, true);
-        } 
+        }
         return pinyin_process_spaces($pinyin, false);
-    } 
-} 
+    }
+}
 if (!function_exists('is_homophone')) {
     /**
      * 检查两个拼音是否同音（忽略声调差异）
@@ -1066,8 +1075,8 @@ if (!function_exists('is_homophone')) {
     function is_homophone($pinyin1, $pinyin2)
     {
         return remove_tone($pinyin1) === remove_tone($pinyin2);
-    } 
-} 
+    }
+}
 if (!function_exists('pinyin_get_initial')) {
     /**
      * 获取拼音的首字母（用于拼音缩写）
@@ -1079,12 +1088,12 @@ if (!function_exists('pinyin_get_initial')) {
     {
         if (empty($pinyin)) {
             return '';
-        } 
+        }
         // 移除声调并取第一个字符
         $noTone = remove_tone($pinyin);
         return mb_substr($noTone, 0, 1);
-    } 
-} 
+    }
+}
 if (!function_exists('filter_pure_chinese')) {
     /**
      * 过滤非纯汉字，仅保留Unicode标准中的纯汉字
@@ -1114,16 +1123,17 @@ if (!function_exists('filter_pure_chinese')) {
             // 替换非纯汉字为空白
             $pattern = PinyinConstants::getChinesePattern('full', true);
             return preg_replace($pattern, '', $text);
-        } 
-    } 
-} 
+        }
+    }
+}
 if (!function_exists('must_string')) {
     /**
      * 确保输入文本为字符串类型
+     *
      * 如果无法转换为字符串，则返回空字符串
      * 如果输入为数组，则转换为字符串并用空格分隔
      *
-     * @param [type] $text 输入文本
+     * @param mixed $text 输入文本
      * @param string $default 默认值（可选）
      * @return string 转换后的字符串
      */
@@ -1131,10 +1141,10 @@ if (!function_exists('must_string')) {
     {
         if (is_string($text)) {
             return trim($text);
-        } 
+        }
         if (is_array($text)) {
             return implode(' ', $text);
-        } 
+        }
         // 检查是否为无法转换为有效字符串的类型
         if (
             is_resource($text) ||
@@ -1142,11 +1152,11 @@ if (!function_exists('must_string')) {
         ) {
             pinyin_debug('Input text must be a string or convertible to string', 'error');
             return $default;
-        } 
+        }
         // 安全转换（此时转换结果是可预期的）
         return (string) $text;
-    } 
-} 
+    }
+}
 if (!function_exists('split_pinyin_tone')) {
     /**
      * 将带声调的拼音字符拆分为基础字母和声调
@@ -1159,7 +1169,7 @@ if (!function_exists('split_pinyin_tone')) {
         // 处理空字符或非拼音字符
         if (empty($char)) {
             return ['letter' => '', 'tone' => 0];
-        } 
+        }
         // 带声调的拼音字符映射表（键：带声调字符，值：[基础字母, 声调]）
         // 覆盖所有常见带声调的拼音元音（a/o/e/i/u/ü）
         $toneMap = [
@@ -1182,17 +1192,17 @@ if (!function_exists('split_pinyin_tone')) {
                 'letter' => $toneMap[$char][0],
                 'tone' => $toneMap[$char][1]
             ];
-        } 
+        }
         // 若不在映射表中（可能是无声调字符或辅音），默认声调为0（轻声）
         return [
             'letter' => $char,
             'tone' => 0
         ];
-    } 
-} 
+    }
+}
 if (!function_exists('pinyin_trim')) {
     function pinyin_trim($str, $sep = ' ')
     {
         return trim($str, " \n\r\t\v\0" . $sep);
-    } 
-} 
+    }
+}

@@ -18,12 +18,6 @@ class BackgroundTaskManager
     private $config;
 
     /**
-     * 任务队列
-     * @var array
-     */
-    private $taskQueue = [];
-
-    /**
      * 构造函数
      * @param array $config 配置数组
      */
@@ -297,12 +291,13 @@ class BackgroundTaskManager
      * 获取字符的Unicode码点
      * @param string $char 汉字
      * @return int Unicode码点
+     * @deprecated 暂未使用，保留供未来功能使用
      */
-    private function getCharCodePoint($char)
-    {
-        $code = unpack('N', mb_convert_encoding($char, 'UCS-4BE', 'UTF-8'));
-        return $code[1] ?? 0;
-    }
+    // private function getCharCodePoint($char)
+    // {
+    //     $code = unpack('N', mb_convert_encoding($char, 'UCS-4BE', 'UTF-8'));
+    //     return $code[1] ?? 0;
+    // }
 
     /**
      * 判断是否为常用汉字
@@ -439,7 +434,6 @@ class BackgroundTaskManager
      */
     private function removeToneFromPinyin($pinyin)
     {
-        return remove_tone($pinyin);
         return remove_tone($pinyin);
     }
 

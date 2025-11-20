@@ -98,13 +98,7 @@ class CustomDictPreservationHelper
         }
 
         // 添加数组数据
-        if (function_exists('\tekintian\pinyin\pinyin_compact_array_export')) {
-            $content .= "return " . \tekintian\pinyin\pinyin_compact_array_export($data) . ";\n";
-        } else {
-            // 简单的数组导出
-            $content .= "return " . var_export($data, true) . ";\n";
-        }
-
+        $content .= "return " . pinyin_compact_array_export($data) . ";\n";
         return $content;
     }
 
