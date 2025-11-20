@@ -5,7 +5,7 @@ namespace tekintian\pinyin;
 use tekintian\pinyin\Contracts\ConverterInterface;
 use tekintian\pinyin\Exception\PinyinException;
 use tekintian\pinyin\Utils\PinyinConstants;
-use InvalidArgumentException;
+use tekintian\pinyin\Utils\SmartDictionarySaver;
 
 /**
  * 汉字转拼音工具
@@ -1745,7 +1745,52 @@ class PinyinConverter implements ConverterInterface
             $this->dicts['polyphone_rules'][$char][] = $rule;
             // 保存到文件
             $path = $this->config['dict']['polyphone_rules'];
-            write_to_file($path, "<?php\nreturn " . pinyin_export_polyphone_rules($this->dicts['polyphone_rules']) . ";\n");
+            
+            // 使用 SmartDictionarySaver 来保留注释并优化保存格式
+            // 导入 SmartDictionarySaver 类
+            if (!class_exists('tekintian\pinyin\Utils\SmartDictionarySaver')) {
+                require_once __DIR__ . '/Utils/SmartDictionarySaver.php';
+            }
+            
+            // 定义标准头部注释
+            $headerComment = "/** 
+        * 多音字规则模板（紧凑友好格式，单规则一行，方便修改） 
+        * 注意本规则里面记录的多音字的拼音是 非默认读音的规则, 和特殊的多音字规则 
+        * type支持三种类型： 
+        * 1. word: 匹配完整词语  2. pre: 匹配前置汉字  3. post: 匹配后置汉字 
+        * pinyin 为带声调的准确读音 
+        * 
+        * 多音字规则的格式: 
+        * 1. 单个多音字的规则： 
+        * 格式：['type' => 'post/pre/word', 'char/word' => '字符/词语', 'pinyin' => '拼音', 'weight' => 权重] 
+        * 注释格式： // 词语  拼音 
+        * 
+        */";
+            
+            // 检查文件是否存在，如果不存在或没有注释，则添加标准头部注释
+            $addHeaderComment = false;
+            if (file_exists($path)) {
+                $content = file_get_contents($path);
+                // 检查是否已经有注释
+                if (strpos($content, '/**') === false) {
+                    $addHeaderComment = true;
+                }
+            } else {
+                $addHeaderComment = true;
+            }
+            
+            // 如果需要添加头部注释，先写入头部注释
+            if ($addHeaderComment) {
+                file_put_contents($path, "<?php\n".$headerComment."\nreturn [];\n");
+            }
+            
+            // 使用 SmartDictionarySaver 保存，保留注释并创建备份
+            SmartDictionarySaver::save($path, $this->dicts['polyphone_rules'], [
+                'preserve_comments' => true,
+                'compact_format' => true,
+                'backup' => true,
+                'file_type' => 'polyphone'
+            ]);
         }
     }
     /**
