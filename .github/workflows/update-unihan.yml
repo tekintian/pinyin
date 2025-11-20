@@ -91,13 +91,13 @@ jobs:
         php -r "
         require_once 'vendor/autoload.php';
         try {
-            \$converter = new \Overtrue\Pinyin\Pinyin();
+            \$converter = new \tekintian\pinyin\PinyinConverter();
             \$result = \$converter->convert('你好');
-            echo '基本转换测试: ' . (\$result && count(\$result) > 0 ? '✓ 通过' : '✗ 失败') . \"\n\";
+            echo '基本转换测试: ' . (\$result ? '✓ 通过' : '✗ 失败') . '\n';
             \$result = \$converter->convert('龘');
-            echo '生僻字测试: ' . (\$result && count(\$result) > 0 ? '✓ 通过' : '✗ 失败') . \"\n\";
+            echo '生僻字测试: ' . (\$result ? '✓ 通过' : '✗ 失败') . '\n';
         } catch (Exception \$e) {
-            echo '测试错误: ' . \$e->getMessage() . \"\n\";
+            echo '测试错误: ' . \$e->getMessage() . '\n';
             exit(1);
         }
         "
